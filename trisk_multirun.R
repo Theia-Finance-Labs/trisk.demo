@@ -3,8 +3,9 @@ library(r2dii.climate.stress.test)
 project_name <- "trisk_runs"
 
 input_path <- r2dii.utils::path_dropbox_2dii(fs::path("ST Inputs","ST_INPUTS_MASTER"))
-output_dir_trisk <- fs::path(project_name, "st_outputs")
+output_dir_trisk <- fs::path("st_outputs_multirun", project_name)
 
+fs::dir_create(output_dir_trisk)
 
 run_params = list(
   list(
