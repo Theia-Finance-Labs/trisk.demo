@@ -20,3 +20,6 @@ Library of scripts to generate and analyse trisk simulations
 
 
 
+3. Multi-run
+
+- Source trisk_multirun.R to loop over multiple run parameters, each new run defined with a new list() element. Undefined parameters will be the defaults of trisk.
