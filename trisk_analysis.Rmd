@@ -1,0 +1,102 @@
+USER GUIDE 
+
+1. BEFORE RUNNING THIS FILE, RUN THE RUN_ME_FIRST.R SCRIPT
+
+2. TO RUN THIS PROJECT WITH YOUR OWN PRODUCTION AND FINANCIAL DATA, REPLACE THOSE FILES IN THE STRESS TEST INPUT FOLDER : 
+  - abcd_stress_test_input.csv 
+  - prewrangled_financial_data_stress_test.csv
+
+-----------------------------------
+
+```{r}
+library(r2dii.climate.stress.test)
+source(here::here("utils.R"))
+```
+
+## Define project parameters
+
+```{r}
+st_input_path <- here::here("st_input") 
+st_output_path <- here::here("st_output")
+
+
+cat(paste("The TRISK input path is located at :\n", st_input_path))
+cat("\n\n")
+cat(paste("The TRISK output path is located at :\n", st_output_path))
+```
+
+Switch between legacy and main inputs.
+
+Leave default for latest version (recommended). Edit with "st_input_legacy"if working with legacy data
+
+```{r}
+convert_colnames_legacy_to_new(
+  data_source=here::here("st_input_main"), 
+  data_target=st_input_path
+  )
+```
+
+## Explore possible trisk parameters
+
+### Possible model parameters
+
+```{r}
+r2dii.climate.stress.test::stress_test_arguments
+```
+
+### Possible scenario parameters
+
+According to the scenario datasets located in st_input those combinations of scenarios are possible for the matching sectors:
+
+```{r}
+possible_trisk_combinations <- r2dii.climate.stress.test::get_scenario_geography_x_ald_sector(st_input_path)
+possible_trisk_combinations |>
+  dplyr::distinct(baseline_scenario, shock_scenario)
+
+```
+
+Replace the values for baseline scenario and shock scenario to list their possible geographies :
+
+```{r}
+possible_trisk_combinations |>
+  dplyr::filter(
+    baseline_scenario == "NGFS2023GCAM_NDC", # EDIT VALUE
+    shock_scenario == "NGFS2023GCAM_NZ2050" # EDIT VALUE
+    ) |>
+  dplyr::distinct(scenario_geography)
+
+```
+
+## Run TRISK
+
+Set parameters
+
+```{r}
+# scenario parameters
+baseline_scenario <- "NGFS2023GCAM_NDC" # EDIT VALUE
+shock_scenario <- "NGFS2023GCAM_NZ2050" # EDIT VALUE
+scenario_geography <- "Global" # EDIT VALUE
+  
+# model parameters  
+discount_rate <- c(0.1) # EDIT VALUE
+shock_year <- c(2035) # EDIT VALUE
+risk_free_rate <- c(0.05) # EDIT VALUE
+# .... Add more parameters definition here and in the run_trisk() function call below
+
+```
+
+Run the model
+
+```{r}
+run_trisk(
+  input_path=st_input_path,
+  output_path=st_output_path,
+  baseline_scenario=baseline_scenario,
+  shock_scenario=shock_scenario,
+  scenario_geography=scenario_geography,
+  discount_rate = discount_rate,
+  shock_year = shock_year,
+  risk_free_rate = risk_free_rate
+)
+cat(paste("Run complete, find results in the folder named with the most recent date in\n\n", st_output_path))
+```
