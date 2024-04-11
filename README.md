@@ -1,8 +1,8 @@
 # trisk.demo
 Library of example scripts to generate and analyse trisk simulations.
 
-Explore the underlying model source code : 
-Use presets from 
+Explore the underlying model source code : https://github.com/2DegreesInvesting/r2dii.climate.stress.test
+Pre-configured plots to use for exploration or presentation of trisk results : https://github.com/2DegreesInvesting/stress.test.plot.report/tree/master 
 
 # User guide
 
@@ -35,3 +35,9 @@ In the `scripts/` folder, you will find different examples on how to run trisk
 
 2. Country specific dataprep
 
+    In case th analysis focuses on a single country
+
+
+3. Outputs aggregation
+   
+   Different ways to aggregate the outputs for further analysis
