@@ -1,0 +1,274 @@
+```{r}
+library(stress.test.plot.report)
+library(readr)
+library(dplyr)
+library(here)
+```
+
+
+# Parameters
+
+```{r}
+tilt_input_path <- here::here("workspace","tiltrisk","tilt_data_3_sectors_3_countries.csv")
+
+granularity <-
+  c("ald_sector", "ald_business_unit")
+
+trisk_output_path  <- here::here("workspace","tiltrisk", "trisk_runs")
+```
+
+
+## =====
+
+# Data load and preprocess
+
+prepare portfolio
+```{r}
+
+tilt_data_3_sectors_3_countries <- readr::read_csv(tilt_input_path) %>%
+  select(-c("...1")) %>%
+  dplyr::mutate(
+    ald_sector = dplyr::case_when(
+      (tilt_sector == "energy" & tilt_subsector == "oil energy") ~ "Oil&Gas",
+      (tilt_sector == "energy" & tilt_subsector == "coal energy") ~ "Coal",
+      (tilt_sector == "energy" & tilt_subsector == "gas energy") ~ "Oil&Gas",
+      (tilt_sector == "power") ~ "Power",
+      TRUE ~ NA_character_  
+    ),
+    ald_business_unit = dplyr::case_when(
+      (tilt_sector == "energy" & tilt_subsector == "oil energy") ~ "Oil",
+      (tilt_sector == "energy" & tilt_subsector == "coal energy") ~ "Coal",
+      (tilt_sector == "energy" & tilt_subsector == "gas energy") ~ "Gas",
+      (tilt_sector == "power") ~ "Total Power",
+      TRUE ~ NA_character_  
+    )
+  )
+```
+
+
+
+## =====
+
+Companies countries details
+<!--
+```{r}
+
+company_isins <- readr::read_csv(company_isins_path)
+
+country_to_iso2c <- countrycode::codelist |>
+  dplyr::filter(!is.na(ecb), !is.na(`country.name.en`)) |>
+  dplyr::distinct(ecb, `country.name.en`) |>
+  dplyr::rename(country_name = `country.name.en`, country_code = ecb) |>
+  dplyr::mutate(country_name=stringr::str_to_lower(country_name))
+
+use_company_ids <- company_isins |>
+  dplyr::rename(company_id=`Company ID`,
+                company_name=`Company Name`,
+                isin=ISIN) |>
+  dplyr::mutate(
+    country_code  = substr(isin, 1, 2)
+  ) |>
+  dplyr::left_join(country_to_iso2c, by=c("country_code")) %>%
+  mutate(company_id = as.character(company_id)) %>%
+  filter(country_name %in% tilt_data_3_sectors_3_countries$country)  %>%
+  distinct(company_id)
+
+```
+-->
+
+```{r}
+
+path_ar_data_raw <-
+  r2dii.utils::path_dropbox_2dii(
+    "ST_INPUTS",
+    "ST_INPUTS_PRODUCTION",
+    "AR-Company-Indicators_2022Q4.xlsx"
+  )
+
+outputs_list <- STDataMGMT::prepare_asset_impact_data(ar_data_path = path_ar_data_raw)
+
+country_to_iso2c <- countrycode::codelist |>
+  dplyr::filter(!is.na(ecb), !is.na(`country.name.en`)) |>
+  dplyr::distinct(ecb, `country.name.en`) |>
+  dplyr::rename(country = `country.name.en`, country_code = ecb) |>
+  dplyr::mutate(country=stringr::str_to_lower(country))
+
+
+companies_countries <- outputs_list$company_activities %>% 
+  mutate(company_id = as.character(company_id)) %>%
+  distinct(company_id, ald_location) %>%
+  dplyr::left_join(country_to_iso2c, by=c("ald_location"="country_code")) %>%
+  filter(country %in% unique(tilt_data_3_sectors_3_countries$country))  %>%
+  distinct(company_id, country)
+
+```
+
+
+available sectors
+
+```{r}
+multi_crispy_data <- stress.test.plot.report:::load_multiple_crispy(
+  crispy_outputs_dir = trisk_output_path
+  ) %>%
+  filter(company_id %in% (companies_countries%>% distinct(company_id) %>% pull(company_id))) %>%
+  left_join(companies_countries)
+
+# available_sectors <- multi_crispy_data |> dplyr::distinct(company_id, ald_sector, ald_business_unit)
+
+```
+
+
+```{r}
+les_cols <- c( "run_id",
+  "scenario_geography", "baseline_scenario",
+  "shock_scenario", "risk_free_rate", "discount_rate",
+  "div_netprofit_prop_coef", "carbon_price_model",
+  "market_passthrough", "financial_stimulus",
+  "start_year", "growth_rate", "shock_year",
+  "net_present_value_baseline", 
+  "net_present_value_shock",
+  "crispy_perc_value_change",
+  "term", "pd_baseline", "pd_shock" 
+  )
+
+analysis_data_bu <- stress.test.plot.report::load_input_plots_data_from_tibble(
+  multi_crispy_data = multi_crispy_data,
+  granularity=c("ald_sector", "ald_business_unit", "country"))  %>% 
+  select_at(c(c("ald_sector", "ald_business_unit", "country"),les_cols)) %>%
+  filter(ald_sector != "Power")
+
+
+analysis_data_sector <- stress.test.plot.report::load_input_plots_data_from_tibble(
+  multi_crispy_data = multi_crispy_data,
+  granularity=c("ald_sector", "country")) %>% 
+  select_at(c(c("ald_sector", "country"),les_cols)) %>%
+  filter(ald_sector == "Power") %>%
+  mutate(ald_business_unit="Total Power")
+
+analysis_data_tiltrisk <- bind_rows(analysis_data_bu, analysis_data_sector)
+
+```
+
+
+# Analysis
+
+1. merge tilt and trisk
+
+```{r}
+# tiltrisk_df_pds <- tilt_data_3_sectors_3_countries %>% filter(
+#   !is.na(ald_sector), 
+#   !is.na(ald_business_unit),
+#   ald_sector != "Power"
+#   ) %>%
+#   inner_join(analysis_data_bu)
+# 
+# 
+# tiltrisk_df_power <- tilt_data_3_sectors_3_countries %>% filter(
+#   ald_sector == "Power"
+#   ) %>%
+#   inner_join(analysis_data_sector)
+# 
+# 
+# tiltrisk_df_pds <- bind_rows(tiltrisk_df_pds, tiltrisk_df_power)
+```
+
+
+```{r}
+# tiltrisk_df %>% readr::write_csv(here::here("workspace/tiltrisk/tiltrisk_alpha.csv"))
+```
+
+
+<!--
+# trajectories
+
+
+```{r}
+trajectories_company_country <- main_data_load_trajectories_data_from_file(
+  crispy_outputs_dir = trisk_output_path,
+  granularity = c("company_id", "ald_sector", "ald_business_unit")
+  ) %>% 
+  left_join(companies_countries)
+```
+
+```{r}
+trajectories_data_bu <- trajectories_company_country %>%
+  group_by(country) %>%
+    main_data_load_trajectories_data(
+  granularity = c("country", "ald_sector", "ald_business_unit")
+)
+
+trajectories_data_sector <- trajectories_company_country %>%
+  main_data_load_trajectories_data(
+  granularity = c("country", "ald_sector")
+)
+
+trajectories_data_bu %>% readr::write_csv(here::here("workspace/tiltrisk/trajectories_data_bu.csv"))
+trajectories_data_sector %>% readr::write_csv(here::here("workspace/tiltrisk/trajectories_data_sector.csv"))
+
+```
+
+
+
+```{r}
+tiltrisk_trajectories <- tilt_data_3_sectors_3_countries %>% filter(
+  !is.na(ald_sector), 
+  !is.na(ald_business_unit),
+  ald_sector != "Power"
+  ) %>%
+  inner_join(trajectories_data_bu)
+
+
+tiltrisk_trajectories_power <- tilt_data_3_sectors_3_countries %>% filter(
+  ald_sector == "Power"
+  ) %>%
+  inner_join(trajectories_data_sector)
+
+
+tiltrisk_trajectories <- bind_rows(tiltrisk_trajectories, tiltrisk_trajectories_power)
+```
+
+```{r}
+tiltrisk_trajectories %>% readr::write_csv("tiltrisk_trajectories.csv")
+```
+-->
+
+
+
+# using nrisk
+
+
+```{r}
+npv_changes_df_weo <-  readr::read_csv(here::here("workspace/tiltrisk/npv_changes_WEO.csv"))
+npv_changes_df_ipr <-  readr::read_csv(here::here("workspace/tiltrisk/npv_changes_IPR.csv"))
+
+npv_changes_df <- bind_rows(npv_changes_df_weo, npv_changes_df_ipr)
+npv_changes_df %>% readr::write_csv(here::here("workspace/tiltrisk/npv_changes_df.csv"))
+
+
+npv_changes_df <- npv_changes_df %>% 
+  filter((ald_business_unit %in% c("Coal", "Gas", "Oil")) |
+           (ald_sector == "Power" &
+              is.na(ald_business_unit)),
+         !is.na(country)) %>%
+  mutate(ald_business_unit = if_else(is.na(ald_business_unit), "Total Power", ald_business_unit))
+
+```
+
+```{r}
+tiltrisk_df <- tilt_data_3_sectors_3_countries %>%
+  inner_join(
+    npv_changes_df %>% 
+      rename(
+        Change_NPV_with_ecosystem_cost=Change_NPV_disc_eco,
+        Change_NPV_with_ecosystem_social_cost=Change_NPV_disc_soc
+  ),
+  by = join_by(country, ald_sector, ald_business_unit)
+  ) %>%
+  inner_join(analysis_data_tiltrisk,by = join_by(country, ald_sector, ald_business_unit, run_id))
+
+```
+
+
+```{r}
+tiltrisk_df %>% readr::write_csv(here::here("workspace/tiltrisk/tiltrisk_nrisk.csv"))
+```
