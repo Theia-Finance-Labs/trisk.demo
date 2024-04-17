@@ -96,5 +96,3 @@ for (folder_name in trisk_output_folders) {
     
     readr::write_csv(multi_trajectory_agg, file.path(output_files_path, paste0(basename(folder_name), "_trajectories.csv")))
 }
-
-
