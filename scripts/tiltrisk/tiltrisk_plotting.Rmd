@@ -4,6 +4,7 @@ library(dplyr)
 library(ggplot2)
 ```
 
+
 # parameters
 
 ```{r}
@@ -16,7 +17,6 @@ tiltrisk_input_path <- here::here("workspace","tiltrisk","tiltrisk_nrisk.csv")
 tiltrisk_trajectories_input_path <- here::here("workspace","tiltrisk","tiltrisk_trajectories.csv")
 ```
 
-
 # dataload
 
 ```{r}
@@ -26,7 +26,7 @@ tiltrisk_df <- readr::read_csv(tiltrisk_input_path) %>%
 tiltrisk_df <- tiltrisk_df %>%
       mutate(
         pd_difference = pd_shock - pd_baseline,
-        crispy_perc_value_change=Change_NPV_with_ecosystem_social_cost
+        crispy_perc_value_change=Change_NPV_with_physical_risk
       )
 
 ```
@@ -71,10 +71,7 @@ tiltrisk_plot_df_companies_main_activity %>%
 
 ```
 
-
 # plots
-
-
 
 ```{r}
 
@@ -96,8 +93,6 @@ for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
     }
 }
 ```
-
-
 
 ```{r, fig.height=8}
 
@@ -124,9 +119,7 @@ for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
 
 ```
 
-
 # Crispy sensitivity analysis
-
 
 ```{r}
 # Calculate the average ROC per company for the second plot
@@ -215,13 +208,11 @@ for (run_id in unique(data_summary$run_id)) {
 }
 ```
 
-
 ```{r}
 
 ```
 
-
-
+````{=html}
 <!--
 ```{r, fig.height=10}
 
@@ -239,6 +230,7 @@ for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
 }
 ```
 -->
+````
 
 # PD distrib plots
 
@@ -270,8 +262,6 @@ for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
   print(density_plot)
 }
 ```
-
-
 
 ### Heterogeneity in Transition Risk
 
@@ -387,3 +377,12 @@ for (run_id_i in unique(tiltrisk_df$run_id)) {
   print(le_plot)
 }
 ```
+
+
+## Funding
+
+EU LIFE Project Grant
+
+Scientific Transition Risk Exercises for Stress tests & Scenario Analysis has received funding from the European Union’s Life programme under Grant No. LIFE21-GIC-DE-Stress under the LIFE-2021-SAP-CLIMA funding call.
+
+![](../../images/LifeLogo2.jpg)
