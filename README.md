@@ -35,9 +35,42 @@ In the `scripts/` folder, you will find different examples on how to run trisk
 
 2. Country specific dataprep
 
-    In case th analysis focuses on a single country
+    In case the analysis focuses on a single country
 
 
 3. Outputs aggregation
    
    Different ways to aggregate the outputs for further analysis
+
+   
+## About Theia Finance Labs
+We align financial markets with climate goals
+Theia Finance Labs (Theia) acts as an incubator for and investor in public, mission driven         programmes at the intersection of finance and climate risks. TFL provides governance, as well      as strategic and operational support designed to help these projects and brands scale and          achieve long-term impact. Theia is 100% non-commercial and mission-driven.
+
+Find out more on https://theiafinance.org
+
+1in1000
+
+The 1in1000 program helps financial institutions and supervisors address future risks and challenges, especially those related to climate change. The program aims to integrate risks posed by climate change, ecosystem service and biodiversity loss, and the breakdown of social cohesion into financial processes and regulations. It focuses on developing long-term risk metrics, designing risk management tools and frameworks, and building capacity for financial institutions and supervisors. Find out more at www.1in1000.com.
+
+## Our values
+
+Non-commercial & committed to the public good
+
+We have no commercial contracts and provide all of our research open source and IP rights-free. This policy minimizes financial conflicts of interest and guarantees the public good-driven nature of our work.
+
+Independent and interest-neutral
+
+Our governance and our funding structure is designed to be diversified and multi-stakeholder. This helps ensure that our research does not represent a particular interest group, but rather our best understanding of the truth.
+
+Science- and evidence-based
+
+We continuously aim to expand and improve the evidence base for decision-making in sustainable finance.
+
+## Funding
+
+EU LIFE Project Grant
+
+Scientific Transition Risk Exercises for Stress tests & Scenario Analysis has received funding from the European Union’s Life programme under Grant No. LIFE21-GIC-DE-Stress under the LIFE-2021-SAP-CLIMA funding call.
+
+![](images/LifeLogo2.jpg)
