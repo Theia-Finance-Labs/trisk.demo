@@ -1,4 +1,4 @@
-library(r2dii.climate.stress.test)
+library(trisk.model)
 
 
 input_path <- r2dii.utils::path_dropbox_2dii(fs::path("ST Inputs","ST_INPUTS_MASTER"))

@@ -36,12 +36,12 @@ renv::snapshot()
 # ========================= OPTION 2 // install the stress test from github
 
 # 1. Manual install by dowloading and installing the package from the source repository : 
-#     https://github.com/2DegreesInvesting/r2dii.climate.stress.test 
+#     https://github.com/2DegreesInvesting/trisk.model 
 
 # 2. Automatic install in R
 
 install.packages("remotes")
-remotes::install_github("2DegreesInvesting/r2dii.climate.stress.test")
+remotes::install_github("2DegreesInvesting/trisk.model")
 install.packages("dplyr")
 
 # ==> You can now try to run trisk_analysis.Rmd

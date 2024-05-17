@@ -1,4 +1,4 @@
-library(stress.test.plot.report)
+library(trisk.plots)
 library(dplyr)
 
 # INTRO ******************************************************************
@@ -40,7 +40,7 @@ parameters_cols <- c("roll_up_type", "scenario_geography", "baseline_scenario", 
 
 
 for (folder_name in trisk_output_folders){
-    multi_crispy <- stress.test.plot.report:::load_multiple_crispy(crispy_outputs_dir = folder_name)
+    multi_crispy <- trisk.plots:::load_multiple_crispy(crispy_outputs_dir = folder_name)
 
     multi_crispy_agg <- multi_crispy %>%
         dplyr::filter(ald_sector %in% use_ald_sectors) %>%
@@ -76,7 +76,7 @@ for (folder_name in trisk_output_folders){
 
 # "production_plan_company_technology", "phase_out"
 for (folder_name in trisk_output_folders) {
-    multi_trajectory <- stress.test.plot.report:::load_multiple_trajectories(crispy_outputs_dir = folder_name)
+    multi_trajectory <- trisk.plots:::load_multiple_trajectories(crispy_outputs_dir = folder_name)
     
     multi_trajectory_agg <- multi_trajectory %>%
         dplyr::group_by_at(c(index_cols, "year")) %>%

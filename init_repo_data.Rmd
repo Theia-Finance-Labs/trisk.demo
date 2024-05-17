@@ -9,7 +9,7 @@ USER GUIDE
 -----------------------------------
 
 ```{r}
-library(r2dii.climate.stress.test)
+library(trisk.model)
 source(here::here("utils.R"))
 ```
 
@@ -41,7 +41,7 @@ convert_colnames_legacy_to_new(
 ### Possible model parameters
 
 ```{r}
-r2dii.climate.stress.test::stress_test_arguments
+trisk.model::stress_test_arguments
 ```
 
 ### Possible scenario parameters
@@ -49,7 +49,7 @@ r2dii.climate.stress.test::stress_test_arguments
 According to the scenario datasets located in st_input those combinations of scenarios are possible for the matching sectors:
 
 ```{r}
-possible_trisk_combinations <- r2dii.climate.stress.test::get_scenario_geography_x_ald_sector(st_input_path)
+possible_trisk_combinations <- trisk.model::get_scenario_geography_x_ald_sector(st_input_path)
 possible_trisk_combinations |>
   dplyr::distinct(baseline_scenario, shock_scenario)
 ```
