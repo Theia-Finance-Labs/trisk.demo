@@ -1,5 +1,5 @@
 ```{r}
-library(stress.test.plot.report)
+library(trisk.plots)
 library(readr)
 library(dplyr)
 library(here)
@@ -85,7 +85,7 @@ path_ar_data_raw <-
     "AR-Company-Indicators_2022Q4.xlsx"
   )
 
-outputs_list <- STDataMGMT::prepare_asset_impact_data(ar_data_path = path_ar_data_raw)
+outputs_list <- trisk.datawrangle::prepare_asset_impact_data(ar_data_path = path_ar_data_raw)
 
 country_to_iso2c <- countrycode::codelist |>
   dplyr::filter(!is.na(ecb), !is.na(`country.name.en`)) |>
@@ -107,7 +107,7 @@ companies_countries <- outputs_list$company_activities %>%
 available sectors
 
 ```{r}
-multi_crispy_data <- stress.test.plot.report:::load_multiple_crispy(
+multi_crispy_data <- trisk.plots:::load_multiple_crispy(
   crispy_outputs_dir = trisk_output_path
   ) %>%
   filter(company_id %in% (companies_countries%>% distinct(company_id) %>% pull(company_id))) %>%
@@ -131,14 +131,14 @@ les_cols <- c( "run_id",
   "term", "pd_baseline", "pd_shock" 
   )
 
-analysis_data_bu <- stress.test.plot.report::load_input_plots_data_from_tibble(
+analysis_data_bu <- trisk.plots::load_input_plots_data_from_tibble(
   multi_crispy_data = multi_crispy_data,
   granularity=c("ald_sector", "ald_business_unit", "country"))  %>% 
   select_at(c(c("ald_sector", "ald_business_unit", "country"),les_cols)) %>%
   filter(ald_sector != "Power")
 
 
-analysis_data_sector <- stress.test.plot.report::load_input_plots_data_from_tibble(
+analysis_data_sector <- trisk.plots::load_input_plots_data_from_tibble(
   multi_crispy_data = multi_crispy_data,
   granularity=c("ald_sector", "country")) %>% 
   select_at(c(c("ald_sector", "country"),les_cols)) %>%

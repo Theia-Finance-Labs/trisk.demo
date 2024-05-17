@@ -1400,8 +1400,8 @@
       ],
       "Hash": "1bbc97f7d637ab3917c514a69047b2c1"
     },
-    "r2dii.climate.stress.test": {
-      "Package": "r2dii.climate.stress.test",
+    "trisk.model": {
+      "Package": "trisk.model",
       "Version": "0.0.0.9005",
       "Source": "unknown",
       "Requirements": [
@@ -1711,41 +1711,6 @@
         "stringr"
       ],
       "Hash": "4079070fc210c7901c0832a3aeab894f"
-    },
-    "stress.test.plot.report": {
-      "Package": "stress.test.plot.report",
-      "Version": "0.0.0.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteUsername": "2DegreesInvesting",
-      "RemoteRepo": "stress.test.plot.report",
-      "RemoteRef": "master",
-      "RemoteSha": "a1a99916d8f9c6f59fc2431476b9c3fa579553b7",
-      "RemoteHost": "api.github.com",
-      "Remotes": "2DegreesInvesting/r2dii.climate.stress.test, 2DegreesInvesting/STDataMGMT, RMI-PACTA/r2dii.colours",
-      "Requirements": [
-        "dplyr",
-        "forcats",
-        "ggplot2",
-        "ggpubr",
-        "ggrepel",
-        "glue",
-        "gridExtra",
-        "lubridate",
-        "magrittr",
-        "patchwork",
-        "purrr",
-        "r2dii.colours",
-        "r2dii.plot",
-        "readr",
-        "rlang",
-        "scales",
-        "stringr",
-        "tibble",
-        "tidyr",
-        "tidytext"
-      ],
-      "Hash": "cca4519e716e2dfb0197d2b3625f0517"
     },
     "stringi": {
       "Package": "stringi",

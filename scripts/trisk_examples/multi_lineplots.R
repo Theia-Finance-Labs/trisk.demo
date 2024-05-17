@@ -1,6 +1,6 @@
 library(dplyr)
 library(ggplot2)
-library(stress.test.plot.report)
+library(trisk.plots)
 
 # Directory where plots will be saved
 plots_dir <- "vignettes/paper_lineplots_absval"

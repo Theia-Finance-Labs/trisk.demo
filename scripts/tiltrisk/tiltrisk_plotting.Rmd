@@ -1,5 +1,5 @@
 ```{r}
-library(stress.test.plot.report)
+library(trisk.plots)
 library(dplyr)
 library(ggplot2)
 ```
