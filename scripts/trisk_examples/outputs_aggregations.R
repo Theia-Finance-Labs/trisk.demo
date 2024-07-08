@@ -30,7 +30,7 @@ index_cols <- c("run_id", "ald_sector", "ald_business_unit") #"company_id", "com
 
 parameters_cols <- c("roll_up_type", "scenario_geography", "baseline_scenario", "shock_scenario", 
 "risk_free_rate", "discount_rate", "div_netprofit_prop_coef", 
-"carbon_price_model", "market_passthrough", "financial_stimulus", 
+"carbon_price_model", "market_passthrough", 
 "start_year", "growth_rate", "shock_year")
 
 # index_cols <- c("run_id", "ald_sector", "ald_business_unit") #"company_id", "company_name"
