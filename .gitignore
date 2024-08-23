@@ -5,6 +5,8 @@ st_outputs/*
 workspace/*
 .DS_Store
 .venv 
+.vscode
+__pycache__
 
 # History files
 .Rhistory

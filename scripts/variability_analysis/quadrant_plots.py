@@ -4,58 +4,7 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-
-# Constants
-DATA_SOURCE_FOLDER = os.path.join("workspace", "india_variability_analysis")
-PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots")
-
-# Create plots folder if it doesn't exist
-os.makedirs(PLOTS_FOLDER, exist_ok=True)
-
-
-# Function to load and return the dataset
-def load_data(source):
-    npv_df = pd.read_csv(os.path.join(source, "npvs.csv"))
-    # Calculate net_present_value_rate_of_change
-    npv_df["net_present_value_change"] = (
-        npv_df["net_present_value_shock"] - npv_df["net_present_value_baseline"]
-    ) / npv_df["net_present_value_baseline"]
-
-    pd_df = pd.read_csv(os.path.join(source, "pds.csv"))
-    pd_df["asset_id"] = pd_df["company_id"]
-    # Calculate pd_difference
-    pd_df["pd_difference"] = pd_df["pd_shock"] - pd_df["pd_baseline"]
-    pd_df = pd_df.loc[pd_df["term"] == 5, :]
-
-    params_df = pd.read_csv(os.path.join(source, "params.csv"))
-
-    return npv_df, pd_df, params_df
-
-
-# Function to filter data based on multiple criteria
-def filter_data(df, params_df, filter_criteria):
-    """
-    Filters the dataframe based on the criteria provided in filter_criteria.
-
-    Parameters:
-    df (pd.DataFrame): The main dataframe to filter.
-    params_df (pd.DataFrame): The parameters dataframe that contains filtering columns.
-    filter_criteria (dict): A dictionary where keys are column names in params_df and values are the criteria for filtering.
-
-    Returns:
-    pd.DataFrame: The filtered dataframe.
-    """
-    # Start with the full params_df
-    filtered_params_df = params_df.copy()
-
-    # Apply each filtering criterion
-    for key, value in filter_criteria.items():
-        filtered_params_df = filtered_params_df[filtered_params_df[key] == value]
-
-    # Merge the filtered params_df with the main dataframe
-    filtered_df = df.merge(filtered_params_df[["run_id"]], on="run_id", how="inner")
-
-    return filtered_df
+from .utils import load_data, filter_data
 
 
 # Function to filter and merge data
@@ -148,7 +97,9 @@ def create_quadrant_plot(data, xlab_scenario, ylab_scenario, value_column, plot_
 
 
 # Main function to run the script
-def main(npv_df, pd_df, params_df, params1, params2):
+def plot_bivariate_scenarios_quadrants(
+    npv_df, pd_df, params_df, params1, params2, save_folder_path
+):
     filter_criteria1, filter_criteria2 = params1, params2
     # Filter and merge data
     merged_npv_df, merged_pd_df = filter_and_merge_data(
@@ -165,7 +116,7 @@ def main(npv_df, pd_df, params_df, params1, params2):
     )
     fig.savefig(
         os.path.join(
-            PLOTS_FOLDER,
+            save_folder_path,
             f"pd_{params1['target_scenario']}___{params2['target_scenario']}_{params1['shock_year']}_vs_{params2['shock_year']}.jpg",
         )
     )
@@ -181,7 +132,7 @@ def main(npv_df, pd_df, params_df, params1, params2):
     )
     fig.savefig(
         os.path.join(
-            PLOTS_FOLDER,
+            save_folder_path,
             f"npv_{params1['target_scenario']}___{params2['target_scenario']}_{params1['shock_year']}_vs_{params2['shock_year']}.jpg",
         )
     )
@@ -189,6 +140,15 @@ def main(npv_df, pd_df, params_df, params1, params2):
 
 
 if __name__ == "__main__":
+    from .utils import load_data, filter_data
+
+    # Constants
+    DATA_SOURCE_FOLDER = os.path.join("workspace", "india_variability_analysis")
+    save_folder_path = os.path.join(DATA_SOURCE_FOLDER, "plots_quadrants")
+
+    # Create output folder if it doesn't exist
+    os.makedirs(save_folder_path, exist_ok=True)
+
     npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)
 
     # Define your run parameters
@@ -224,10 +184,11 @@ if __name__ == "__main__":
         for j, params2 in enumerate(run_params):
             if i >= j:
                 continue  # Skip if indices are the same or if params1 has already been compared with params2
-            main(
+            plot_bivariate_scenarios_quadrants(
                 npv_df=npv_df,
                 pd_df=pd_df,
                 params_df=params_df,
                 params1=params1,
                 params2=params2,
+                save_folder_path=save_folder_path,
             )
