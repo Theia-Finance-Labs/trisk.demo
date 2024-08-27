@@ -1,11 +1,11 @@
 # trisk.demo
-Library of example scripts to generate and analyse trisk simulations.
+Library of example scripts to generate and analyse trisk simulations. This R package does not contain any function, but rather scripts found in the `data-raw` folder.
 
 Explore the underlying model source code : https://github.com/Theia-Finance-Labs/trisk.model
 Utility functions to explore Trisk outputs : https://github.com/Theia-Finance-Labs/trisk.analysis
 Pre-configured plots to use for exploration or in reports : https://github.com/Theia-Finance-Labs/trisk.plots
 
-# 
+
 
 # References
 
