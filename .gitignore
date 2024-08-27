@@ -6,6 +6,10 @@ trisk_runs/*
 st_outputs/*
 workspace/*
 .DS_Store
+.venv 
+.vscode
+__pycache__
+data-raw/data
 
 # History files
 .Rhistory
