@@ -58,3 +58,8 @@ def filter_data(df, params_df, filter_criteria):
     filtered_df = df.merge(filtered_params_df[["run_id"]], on="run_id", how="inner")
 
     return filtered_df
+
+
+if __name__ == "__main__":
+    DATA_SOURCE_FOLDER = os.path.join("workspace", "india_variability_analysis")
+    npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)
