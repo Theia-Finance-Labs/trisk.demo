@@ -1,3 +1,5 @@
+# Run data-raw/clics_generate_data.R first
+
 library(ggplot2)
 library(dplyr)
 
