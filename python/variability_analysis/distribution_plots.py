@@ -66,245 +66,179 @@ def filter_data(df, params_df, filter_criteria):
 
 
 # Function to determine common x and y axis limits for all plots
-def determine_common_limits(data, params_df, run_params, selected_sectors):
+def determine_common_limits(data, column, filter_dict=None):
     """
-    Determines the common x and y axis limits for all plots.
+    Détermine les limites communes pour l'axe x basées sur les données fournies.
 
-    Parameters:
-    data (pd.DataFrame): The NPV dataframe containing data to analyze.
-    params_df (pd.DataFrame): The parameters dataframe for filtering runs.
-    run_params (list): A list of dictionaries, each containing run parameters for plotting.
-    selected_sectors (list): Sectors to include in the analysis.
+    Args:
+    data (pd.DataFrame): Le DataFrame contenant les données à analyser.
+    column (str): Le nom de la colonne à utiliser pour déterminer les limites.
+    filter_dict (dict, optional): Un dictionnaire de filtres à appliquer aux données.
 
     Returns:
-    tuple: The x and y axis limits.
+    tuple: Les limites x (x_min, x_max).
     """
-    all_changes = []
+    if filter_dict:
+        for key, value in filter_dict.items():
+            data = data[data[key] == value]
 
-    # Collect all changes to determine common limits
-    for params in run_params:
-        filtered_data = filter_data(data, params_df, params)
-        filtered_data = filtered_data[filtered_data["sector"].isin(selected_sectors)]
-        all_changes.extend(filtered_data["net_present_value_change"].values)
+    all_values = data[column].dropna()
 
-    if all_changes:
-        x_min = min(all_changes) - 0.5  # Adding margin
-        x_max = max(all_changes) + 0.5  # Adding margin
+    if len(all_values) > 0:
+        x_min = all_values.min()
+        x_max = all_values.max()
+        margin = (x_max - x_min) * 0.1  # 10% de marge
+        return (x_min - margin, x_max + margin)
     else:
-        x_min, x_max = -1, 1  # Default limits if no data is present
-
-    # Dynamic y_max based on estimated density
-    y_max = 1.0  # Assuming default maximum density
-
-    return (x_min, x_max), (0, y_max)
+        print(f"Attention : Aucune donnée valide trouvée pour la colonne {column}")
+        return (-1, 1)  # Limites par défaut si aucune donnée n'est trouvée
 
 
 # Function to plot density distribution for multiple scenarios
 def plot_density_distribution(
-    data,
-    params_df,
-    run_params,
-    selected_sectors,
-    title,
-    plots_folder,
-    common_xlim,
-    technology=None,
-    plot_by_technology=False,
-    plot_by_run_id=False,
+    data, params_df, title, plots_folder, mode="by_run", specific_run_id=None
 ):
-    """
-    Plots the density distribution for multiple runs on the same plot.
+    print("Données initiales :")
+    print(data.head())
+    print(f"Nombre total de lignes : {len(data)}")
+    print(f"Colonnes : {data.columns}")
+    print(f"Mode : {mode}")
+    print(f"Specific run ID : {specific_run_id}")
+    print("Paramètres :")
+    print(params_df)
 
-    Parameters:
-    data (pd.DataFrame): The NPV dataframe containing data to plot.
-    params_df (pd.DataFrame): The parameters dataframe for filtering runs.
-    run_params (list): A list of dictionaries, each containing run parameters for plotting.
-    selected_sectors (list): Sectors to include in the plot.
-    title (str): Title of the plot.
-    plots_folder (str): Path to the folder where plots will be saved.
-    common_xlim (tuple): The common x-axis limits.
-    technology (str): Specific technology to filter and plot. If None, plots for all technologies.
-    plot_by_technology (bool): If True, plots each technology separately for all run_ids.
-    plot_by_run_id (bool): If True, plots each run_id separately with all technologies.
-    """
     mpl.rcParams["font.family"] = "Times New Roman"
     plt.style.use("default")
-    plt.figure(figsize=(12, 8), dpi=250)
+    plt.figure(figsize=(10, 6), dpi=250)
 
-    colors = plt.cm.tab10(np.linspace(0, 1, 10))
+    colors = plt.colormaps["tab10"]
     max_density_value = 0
 
-    if plot_by_technology:
-        # Plot each technology for all run_ids
-        for idx, tech in enumerate(data["technology"].unique()):
-            color = colors[idx % len(colors)]
-            tech_data = data[data["technology"] == tech]
-            tech_data = tech_data[tech_data["sector"].isin(selected_sectors)]
+    if mode == "by_run":
+        xlim = determine_common_limits(data, "net_present_value_change")
+        for run_id, run_params in params_df.iterrows():
+            filtered_data = data[data["run_id"] == run_params["run_id"]]
+            print(
+                f"Données filtrées pour run_id {run_params['run_id']} : {len(filtered_data)} lignes"
+            )
 
+            if not filtered_data.empty:
+                print(f"Traçage pour run_id {run_params['run_id']}")
+                label = f"{run_params['target_scenario']} ({run_params['shock_year']}, {run_params['scenario_geography']})"
+                density = filtered_data["net_present_value_change"].plot.density(
+                    label=label, color=colors(run_id % 10), ax=plt.gca()
+                )
+                max_density_value = max(max_density_value, plt.gca().get_ylim()[1])
+            else:
+                print(f"Pas de données pour run_id {run_params['run_id']}")
+
+    elif mode == "by_technology":
+        if specific_run_id is None:
+            raise ValueError(
+                "specific_run_id doit être fourni lorsque le mode est 'by_technology'"
+            )
+
+        filtered_data = data[data["run_id"] == specific_run_id]
+
+        print(
+            f"Données filtrées pour run_id {specific_run_id} : {len(filtered_data)} lignes"
+        )
+        print(f"Technologies uniques : {filtered_data['technology'].unique()}")
+
+        xlim = determine_common_limits(filtered_data, "net_present_value_change")
+
+        for tech_id, technology in enumerate(filtered_data["technology"].unique()):
+            tech_data = filtered_data[filtered_data["technology"] == technology]
+            print(f"Données pour la technologie {technology} : {len(tech_data)} lignes")
             if not tech_data.empty:
-                density = tech_data["net_present_value_change"].plot(
-                    kind="density", label=tech, color=color
+                values = tech_data["net_present_value_change"].values
+                print(
+                    f"Statistiques pour {technology}: min={values.min()}, max={values.max()}, mean={values.mean()}, std={values.std()}"
                 )
-                max_density_value = max(max_density_value, density.get_ylim()[1])
-    elif plot_by_run_id:
-        # Plot each run_id with all technologies
-        for idx, params in enumerate(run_params):
-            filtered_data = filter_data(data, params_df, params)
-            filtered_data = filtered_data[
-                filtered_data["sector"].isin(selected_sectors)
-            ]
 
-            label = f"{params['target_scenario']} ({params['shock_year']}, {params['scenario_geography']})"
-            color = colors[idx % len(colors)]
+                if values.std() > 0:
+                    density = tech_data["net_present_value_change"].plot.density(
+                        label=technology, color=colors(tech_id), ax=plt.gca()
+                    )
+                    max_density_value = max(max_density_value, plt.gca().get_ylim()[1])
+                else:
+                    plt.axvline(values.mean(), color=colors(tech_id), label=technology)
+                    max_density_value = 1  # Valeur arbitraire pour l'axe y
+            else:
+                print(f"Pas de données pour la technologie {technology}")
 
-            if not filtered_data.empty:
-                density = filtered_data["net_present_value_change"].plot(
-                    kind="density", label=label, color=color
-                )
-                max_density_value = max(max_density_value, density.get_ylim()[1])
-    else:
-        # Existing code for plotting by run_id or specific technology
-        for idx, params in enumerate(run_params):
-            color = colors[idx % len(colors)]
-            filtered_data = filter_data(data, params_df, params)
-            filtered_data = filtered_data[
-                filtered_data["sector"].isin(selected_sectors)
-            ]
+        run_params = params_df.loc[params_df["run_id"] == specific_run_id].iloc[0]
+        title = f"{title} - {run_params['target_scenario']} ({run_params['shock_year']}, {run_params['scenario_geography']})"
 
-            if technology:
-                filtered_data = filtered_data[filtered_data["technology"] == technology]
+    if max_density_value == 0:
+        print("Aucune donnée n'a été tracée. Vérifiez vos données et vos filtres.")
+        plt.close()
+        return
 
-            label = f"{params['target_scenario']} ({params['shock_year']}, {params['scenario_geography']})"
-            if not filtered_data.empty:
-                density = filtered_data["net_present_value_change"].plot(
-                    kind="density", label=label, color=color
-                )
-                max_density_value = max(max_density_value, density.get_ylim()[1])
-
-    plt.xlim(common_xlim)
-    plt.ylim(
-        0, max_density_value + 0.1 * max_density_value
-    )  # Add 10% margin to the top
+    plt.xlim(xlim)
+    plt.ylim(0, max_density_value * 1.1)  # Ajout d'une marge de 10% en haut
 
     plt.title(title, fontsize=18)
-    plt.xlabel("Valuation change", fontsize=14)
-    plt.ylabel("Density", fontsize=14)
+    plt.xlabel("Changement de valorisation", fontsize=14)
+    plt.ylabel("Densité", fontsize=14)
     plt.legend(fontsize=10)
 
     ax = plt.gca()
     ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.0%}"))
 
-    # Adjust margins to prevent cutting off the top of the plots
-    plt.subplots_adjust(top=0.85, right=0.95, left=0.1, bottom=0.1)  # Adjust margins
+    plt.tight_layout()
 
-    # Save the plot with a filename that includes the technology name if provided
-    if plot_by_technology:
-        imgpath = os.path.join(
-            plots_folder, f"{title.replace(' ', '_')}_All_Technologies.png"
-        )
-    elif plot_by_run_id:
-        imgpath = os.path.join(
-            plots_folder, f"{title.replace(' ', '_')}_All_RunIDs.png"
-        )
-    elif technology:
-        imgpath = os.path.join(
-            plots_folder, f"{title.replace(' ', '_')}_{technology}.png"
-        )
-    else:
-        imgpath = os.path.join(plots_folder, f"{title.replace(' ', '_')}_Default.png")
+    mode_suffix = "by_run" if mode == "by_run" else f"by_technology_{specific_run_id}"
+    imgpath = os.path.join(plots_folder, f"{title.replace(' ', '_')}_{mode_suffix}.png")
 
     plt.savefig(imgpath)
     plt.close()
-    print(f"Plot saved to {imgpath}")
+    print(f"Graphique sauvegardé dans {imgpath}")
 
 
 # Main execution function
 def plot_density_distributions(
-    data_source_folder,
+    npv_df,
+    params_df,
+    title,
     plots_folder,
-    selected_sectors,
-    run_params,
-    title="Distribution of Valuation Change across Scenarios",
-    plot_by_technology=False,
-    plot_by_run_id=False,
 ):
-    """
-    Runs the analysis by loading data, filtering it based on provided sectors,
-    and plotting the density distribution of valuation changes.
+    plots_folder_by_run = os.path.join(plots_folder, "by_run")
+    plots_folder_by_technology = os.path.join(plots_folder, "by_technology")
+    os.makedirs(plots_folder_by_run, exist_ok=True)
+    os.makedirs(plots_folder_by_technology, exist_ok=True)
 
-    Parameters:
-    - data_source_folder (str): Path to the folder containing input data files.
-    - plots_folder (str): Path to the folder where plots will be saved.
-    - selected_sectors (list): List of sectors to include in the density plot.
-    - run_params (list of dicts): List of run parameters for each scenario.
-    - title (str): Title of the plot (default is "Distribution of Valuation Change across Scenarios").
-    - plot_by_technology (bool): If True, plots all technologies for all run_ids.
-    - plot_by_run_id (bool): If True, plots all run_ids with all technologies.
-    """
-    npv_df, pd_df, params_df = load_data(data_source_folder)
-
-    # Check if data loading was successful
-    if npv_df is None or pd_df is None or params_df is None:
-        print("Data loading failed. Exiting.")
-        return
-
-    # Create output folder if it doesn't exist
-    os.makedirs(plots_folder, exist_ok=True)
-
-    # Determine common x-axis limits for all plots
-    common_xlim, common_ylim = determine_common_limits(
-        npv_df, params_df, run_params, selected_sectors
+    # Tracer le plot global (mode "by_run")
+    plot_density_distribution(
+        npv_df,
+        params_df,
+        title=title,
+        plots_folder=plots_folder_by_run,
+        mode="by_run",
     )
 
-    if plot_by_technology:
-        # Plot all technologies for all run_ids
+    # Tracer un plot par technologie (toujours en mode "by_run")
+    technologies = npv_df["technology"].unique()
+    for tech in technologies:
+        tech_data = npv_df[npv_df["technology"] == tech]
         plot_density_distribution(
-            npv_df,
+            tech_data,
             params_df,
-            run_params,
-            selected_sectors,
-            title=f"{title} - All Technologies",
-            plots_folder=plots_folder,
-            common_xlim=common_xlim,
-            plot_by_technology=True,
-        )
-    elif plot_by_run_id:
-        # Plot all run_ids with all technologies
-        plot_density_distribution(
-            npv_df,
-            params_df,
-            run_params,
-            selected_sectors,
-            title=f"{title} - All Run IDs",
-            plots_folder=plots_folder,
-            common_xlim=common_xlim,
-            plot_by_run_id=True,
-        )
-    else:
-        # Existing code for plotting all run_ids together and separately by technology
-        plot_density_distribution(
-            npv_df,
-            params_df,
-            run_params,
-            selected_sectors,
-            title=title,
-            plots_folder=plots_folder,
-            common_xlim=common_xlim,
+            title=f"{title} - {tech}",
+            plots_folder=plots_folder_by_run,
+            mode="by_run",
         )
 
-        unique_technologies = npv_df["technology"].unique()
-        for tech in unique_technologies:
-            tech_title = f"{title} for {tech} Technology"
-            plot_density_distribution(
-                npv_df,
-                params_df,
-                run_params,
-                selected_sectors,
-                title=tech_title,
-                plots_folder=plots_folder,
-                common_xlim=common_xlim,
-                technology=tech,
-            )
+    # Tracer par technologie pour chaque run (mode "by_technology")
+    for run_id in params_df["run_id"]:
+        plot_density_distribution(
+            npv_df,
+            params_df,
+            title=title,
+            plots_folder=plots_folder_by_technology,
+            mode="by_technology",
+            specific_run_id=run_id,
+        )
 
 
 if __name__ == "__main__":
@@ -312,55 +246,16 @@ if __name__ == "__main__":
     DATA_SOURCE_FOLDER = os.path.join("workspace", "india_variability_analysis")
     PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_distributions")
 
-    # Define sectors for density plots
-    selected_sectors = ["Power"]
+    # Load data
+    npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)
 
-    # Define run parameters (color is not needed here)
-    run_params = [
-        {
-            "baseline_scenario": "NGFS2023GCAM_CP",
-            "target_scenario": "NGFS2023GCAM_B2DS",
-            "shock_year": 2025,
-            "scenario_geography": "Global",
-        },
-        {
-            "baseline_scenario": "NGFS2023GCAM_CP",
-            "target_scenario": "NGFS2023GCAM_B2DS",
-            "shock_year": 2030,
-            "scenario_geography": "Global",
-        },
-        {
-            "baseline_scenario": "NGFS2023GCAM_CP",
-            "target_scenario": "NGFS2023GCAM_NZ2050",
-            "shock_year": 2025,
-            "scenario_geography": "Global",
-        },
-        {
-            "baseline_scenario": "NGFS2023GCAM_CP",
-            "target_scenario": "NGFS2023GCAM_NZ2050",
-            "shock_year": 2030,
-            "scenario_geography": "Global",
-        },
-        {
-            "baseline_scenario": "NGFS2023GCAM_CP",
-            "target_scenario": "WEO2021_SDS",
-            "shock_year": 2025,
-            "scenario_geography": "Global",
-        },
-        {
-            "baseline_scenario": "NGFS2023GCAM_CP",
-            "target_scenario": "Oxford",
-            "shock_year": 2025,
-            "scenario_geography": "Global",
-        },
-    ]
-
-    # Run the analysis and plot density distribution
-    plot_density_distributions(
-        data_source_folder=DATA_SOURCE_FOLDER,
-        plots_folder=PLOTS_FOLDER,
-        selected_sectors=selected_sectors,
-        run_params=run_params,
-        plot_by_technology=True,  # Change to True to plot all technologies
-        plot_by_run_id=False,  # Change to True to plot all run_ids
-    )
+    if npv_df is None or pd_df is None or params_df is None:
+        print("Le chargement des données a échoué. Arrêt du programme.")
+    else:
+        # Run the analysis and plot density distribution
+        plot_density_distributions(
+            npv_df,
+            params_df,
+            title="Distribution du changement de valorisation à travers les scénarios",
+            plots_folder=PLOTS_FOLDER,
+        )
