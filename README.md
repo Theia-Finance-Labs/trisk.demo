@@ -1,5 +1,6 @@
 # trisk.demo
 Library of example scripts to generate and analyse trisk simulations. This R package does not contain any function, but rather scripts found in the `data-raw` folder.
+The content of the workspace folder is not tracked by git. It can be used as a local storage for intermediate data and results. The content of data-raw/data is not tracked by git either.
 
 Explore the underlying model source code : https://github.com/Theia-Finance-Labs/trisk.model
 Utility functions to explore Trisk outputs : https://github.com/Theia-Finance-Labs/trisk.analysis
