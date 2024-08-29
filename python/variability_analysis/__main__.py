@@ -82,7 +82,10 @@ if __name__ == "__main__":
     print("Génération des graphiques de densité...")
     npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)
     plot_density_distributions(
-        npv_df=npv_df, params_df=params_df, plots_folder=DENSITY_PLOTS_FOLDER
+        npv_df=npv_df,
+        pd_df=pd_df,
+        params_df=params_df,
+        plots_folder=DENSITY_PLOTS_FOLDER,
     )
     print("Graphiques de densité générés.")
 
