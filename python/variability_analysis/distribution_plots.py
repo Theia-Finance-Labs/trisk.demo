@@ -89,24 +89,32 @@ def plot_density(data, column, ax, label, color):
         return 1  # Arbitrary value for y-axis
 
 
-def plot_distributions_by_technology(npv_df, params_df, plots_folder):
+def plot_distributions_by_category(
+    data_df, params_df, plots_folder, value_type, category_column
+):
     """
-    Plots distributions for each technology, with a line for each run_id.
+    Plots distributions for each category (technology or sector), with a line for each run_id.
     Creates two sets of graphs: one with free x-axis and one with aligned x-axis.
     """
-    plots_folder_free = os.path.join(plots_folder, "by_technology_free_x")
-    plots_folder_aligned = os.path.join(plots_folder, "by_technology_aligned_x")
+    plots_folder_free = os.path.join(
+        plots_folder, f"{value_type}_by_{category_column}_free_x"
+    )
+    plots_folder_aligned = os.path.join(
+        plots_folder, f"{value_type}_by_{category_column}_aligned_x"
+    )
     os.makedirs(plots_folder_free, exist_ok=True)
     os.makedirs(plots_folder_aligned, exist_ok=True)
 
-    print(f"Creating distribution graphs by technology")
+    print(
+        f"Création des graphiques de distribution par {category_column} pour {value_type}"
+    )
 
-    technologies = npv_df["technology"].unique()
-    technologies = np.append(technologies, "All")  # Add "All" for the special case
+    categories = data_df[category_column].unique()
+    categories = np.append(categories, "All")  # Ajouter "All" pour le cas spécial
 
-    # Calculate global limits for aligned x-axis
-    global_min = npv_df["net_present_value_change"].min()
-    global_max = npv_df["net_present_value_change"].max()
+    # Calculer les limites globales pour l'axe x aligné
+    global_min = data_df[value_type].min()
+    global_max = data_df[value_type].max()
     global_margin = (global_max - global_min) * 0.1
     global_xlim = (global_min - global_margin, global_max + global_margin)
 
@@ -128,17 +136,17 @@ def plot_distributions_by_technology(npv_df, params_df, plots_folder):
         "#FF69B4",
     ]
 
-    for tech in technologies:
-        print(f"\nProcessing technology: {tech}")
+    for cat in categories:
+        print(f"\nTraitement de {category_column}: {cat}")
 
-        if tech == "All":
-            tech_data = npv_df
-            title = "Distribution of Valuation Change - All Technologies"
+        if cat == "All":
+            cat_data = data_df
+            title = f"Distribution de {value_type} - Tous les {category_column}s"
         else:
-            tech_data = npv_df[npv_df["technology"] == tech]
-            title = f"Distribution of Valuation Change - {tech}"
+            cat_data = data_df[data_df[category_column] == cat]
+            title = f"Distribution de {value_type} - {cat}"
 
-        print(f"  Number of rows for this technology: {len(tech_data)}")
+        print(f"  Nombre de lignes pour ce {category_column}: {len(cat_data)}")
 
         for aligned in [False, True]:
             plt.figure(figsize=(10, 6), dpi=250)
@@ -148,43 +156,45 @@ def plot_distributions_by_technology(npv_df, params_df, plots_folder):
             min_x, max_x = float("inf"), float("-inf")
 
             for idx, (run_id, run_params) in enumerate(params_df.iterrows()):
-                run_data = tech_data[tech_data["run_id"] == run_params["run_id"]]
-                print(f"  Processing run_id: {run_id} ({len(run_data)} rows)")
+                run_data = cat_data[cat_data["run_id"] == run_params["run_id"]]
+                print(f"  Traitement du run_id: {run_id} ({len(run_data)} lignes)")
 
                 if not run_data.empty:
-                    values = run_data["net_present_value_change"].values
+                    values = run_data[value_type].values
                     min_x = min(min_x, values.min())
                     max_x = max(max_x, values.max())
 
                     label = f"{run_params['target_scenario']} ({run_params['shock_year']}, {run_params['scenario_geography']})"
                     if len(values) > 1:
                         try:
-                            density = run_data["net_present_value_change"].plot.density(
+                            density = run_data[value_type].plot.density(
                                 label=label, color=colors[idx % len(colors)], ax=ax
                             )
                             current_max_density = ax.get_ylim()[1]
                             max_density = min(
                                 max(max_density, current_max_density), 100
                             )
-                            print(f"    Density curve plotted for {label}")
+                            print(f"    Courbe de densité tracée pour {label}")
                         except Exception as e:
-                            print(f"    Error plotting density for {label}: {str(e)}")
+                            print(
+                                f"    Erreur lors du tracé de la densité pour {label}: {str(e)}"
+                            )
                             ax.axvline(
                                 values.mean(),
                                 color=colors[idx % len(colors)],
                                 label=label,
                             )
                             print(
-                                f"    Vertical line plotted for {label} at mean value"
+                                f"    Ligne verticale tracée pour {label} à la valeur moyenne"
                             )
                     else:
                         ax.axvline(
                             values[0], color=colors[idx % len(colors)], label=label
                         )
-                        print(f"    Single vertical line plotted for {label}")
+                        print(f"    Ligne verticale unique tracée pour {label}")
 
             if min_x == float("inf") or max_x == float("-inf"):
-                print(f"  No valid data for technology {tech}")
+                print(f"  Pas de données valides pour {category_column} {cat}")
                 plt.close()
                 continue
 
@@ -194,10 +204,10 @@ def plot_distributions_by_technology(npv_df, params_df, plots_folder):
                 margin = (max_x - min_x) * 0.1
                 plt.xlim(min_x - margin, max_x + margin)
 
-            plt.ylim(0, max_density * 1.1)  # Add 10% margin at the top
+            plt.ylim(0, max_density * 1.1)  # Ajouter une marge de 10% en haut
             plt.title(title, fontsize=18)
-            plt.xlabel("Valuation Change", fontsize=14)
-            plt.ylabel("Density", fontsize=14)
+            plt.xlabel(f"{value_type.replace('_', ' ').title()}", fontsize=14)
+            plt.ylabel("Densité", fontsize=14)
             plt.legend(fontsize=10)
             ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.0%}"))
             plt.tight_layout()
@@ -206,20 +216,22 @@ def plot_distributions_by_technology(npv_df, params_df, plots_folder):
             imgpath = os.path.join(folder, f"{title.replace(' ', '_')}.png")
             plt.savefig(imgpath)
             plt.close()
-            print(f"  {'Aligned' if aligned else 'Free'} graph saved in {imgpath}")
+            print(
+                f"  Graphique {'aligné' if aligned else 'libre'} sauvegardé dans {imgpath}"
+            )
 
-        print(f"  X-axis limits: [{min_x:.4f}, {max_x:.4f}]")
-        print(f"  Maximum density: {max_density:.4f}")
+        print(f"  Limites de l'axe X: [{min_x:.4f}, {max_x:.4f}]")
+        print(f"  Densité maximale: {max_density:.4f}")
 
 
-def plot_distributions_by_run(npv_df, params_df, plots_folder):
+def plot_distributions_by_run(data_df, params_df, plots_folder, value_type):
     """
     Plots distributions for each run_id, with a line for each technology.
     """
-    plots_folder = os.path.join(plots_folder, "by_run")
+    plots_folder = os.path.join(plots_folder, f"{value_type}_by_run")
     os.makedirs(plots_folder, exist_ok=True)
 
-    print(f"Creating distribution graphs by run in {plots_folder}")
+    print(f"Creating distribution graphs by run for {value_type} in {plots_folder}")
 
     colors = [
         "blue",
@@ -244,10 +256,10 @@ def plot_distributions_by_run(npv_df, params_df, plots_folder):
         plt.figure(figsize=(10, 6), dpi=250)
         ax = plt.gca()
 
-        run_data = npv_df[npv_df["run_id"] == run_params["run_id"]]
+        run_data = data_df[data_df["run_id"] == run_params["run_id"]]
         print(f"  Number of rows for this run: {len(run_data)}")
 
-        title = f"Distribution of Valuation Change - {run_params['target_scenario']} ({run_params['shock_year']}, {run_params['scenario_geography']})"
+        title = f"Distribution of {value_type} - {run_params['target_scenario']} ({run_params['shock_year']}, {run_params['scenario_geography']})"
 
         max_density = 0
         min_x, max_x = float("inf"), float("-inf")
@@ -257,13 +269,13 @@ def plot_distributions_by_run(npv_df, params_df, plots_folder):
             print(f"  Processing technology: {tech} ({len(tech_data)} rows)")
 
             if not tech_data.empty:
-                values = tech_data["net_present_value_change"].values
+                values = tech_data[value_type].values
                 min_x = min(min_x, values.min())
                 max_x = max(max_x, values.max())
 
                 if len(values) > 1:
                     try:
-                        density = tech_data["net_present_value_change"].plot.density(
+                        density = tech_data[value_type].plot.density(
                             label=tech, color=colors[idx % len(colors)], ax=ax
                         )
                         current_max_density = ax.get_ylim()[1]
@@ -291,7 +303,7 @@ def plot_distributions_by_run(npv_df, params_df, plots_folder):
         plt.xlim(min_x - margin, max_x + margin)
         plt.ylim(0, max_density * 1.1)  # Add 10% margin at the top
         plt.title(title, fontsize=18)
-        plt.xlabel("Valuation Change", fontsize=14)
+        plt.xlabel(f"{value_type.replace('_', ' ').title()}", fontsize=14)
         plt.ylabel("Density", fontsize=14)
         plt.legend(fontsize=10)
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.0%}"))
@@ -303,15 +315,28 @@ def plot_distributions_by_run(npv_df, params_df, plots_folder):
         print(f"  Graph saved in {imgpath}")
 
 
-def plot_density_distributions(npv_df, params_df, plots_folder):
+def plot_density_distributions(npv_df, pd_df, params_df, plots_folder):
     """
     Main function to plot all density distributions.
     """
     mpl.rcParams["font.family"] = "Times New Roman"
     plt.style.use("default")
 
-    plot_distributions_by_technology(npv_df, params_df, plots_folder)
-    plot_distributions_by_run(npv_df, params_df, plots_folder)
+    # Plot for NPV
+    npv_folder = os.path.join(plots_folder, "npv")
+    os.makedirs(npv_folder, exist_ok=True)
+    plot_distributions_by_category(
+        npv_df, params_df, npv_folder, "net_present_value_change", "technology"
+    )
+    plot_distributions_by_run(npv_df, params_df, npv_folder, "net_present_value_change")
+
+    # Plot for PD
+    pd_folder = os.path.join(plots_folder, "pd")
+    os.makedirs(pd_folder, exist_ok=True)
+    plot_distributions_by_category(
+        pd_df, params_df, pd_folder, "pd_difference", "sector"
+    )
+    plot_distributions_by_run(pd_df, params_df, pd_folder, "pd_difference")
 
 
 if __name__ == "__main__":
@@ -326,4 +351,4 @@ if __name__ == "__main__":
         print("Data loading failed. Exiting program.")
     else:
         # Run the analysis and plot density distribution
-        plot_density_distributions(npv_df, params_df, PLOTS_FOLDER)
+        plot_density_distributions(npv_df, pd_df, params_df, PLOTS_FOLDER)

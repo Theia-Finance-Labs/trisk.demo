@@ -16,7 +16,7 @@ run_analysis <- function(input_path, project_output_path, run_params, country_is
 }
 
 
-# input_path <- file.path("workspace", "trisk_inputs_v2_country_detail")
+# input_path <- file.path("workspace", "trisk_inputs_v2_legacy_countries")
 # project_output_path <- file.path("workspace", "india_variability_analysis")
 # dir.create(project_output_path, showWarnings = FALSE, recursive = TRUE)
 # run_params <- list(

@@ -48,7 +48,7 @@ def run_r_analysis(input_path, project_output_path, run_params, country_iso2, se
 
 if __name__ == "__main__":
     # Define the paths
-    input_path = os.path.join("workspace", "trisk_inputs_v2_country_detail")
+    input_path = os.path.join("workspace", "trisk_inputs_v2_legacy_countries")
     project_output_path = os.path.join("workspace", "india_variability_analysis")
 
     # Define the parameters
@@ -74,6 +74,30 @@ if __name__ == "__main__":
         {
             "baseline_scenario": "NGFS2023GCAM_CP",
             "target_scenario": "NGFS2023GCAM_NZ2050",
+            "shock_year": 2030,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_NZ2050",
+            "shock_year": 2025,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_NZ2050",
+            "shock_year": 2030,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_B2DS",
+            "shock_year": 2025,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_B2DS",
             "shock_year": 2030,
             "scenario_geography": "Global",
         },

@@ -12,13 +12,14 @@ if __name__ == "__main__":
     )
     DENSITY_PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_distributions")
     QUADRANT_PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_quadrants")
-    R_INPUT_PATH = os.path.join("workspace", "trisk_inputs_v2_country_detail")
+    R_INPUT_PATH = os.path.join("workspace", "trisk_inputs_v2_legacy_countries")
 
     # Create output folders if they don't exist
     os.makedirs(DENSITY_PLOTS_FOLDER, exist_ok=True)
     os.makedirs(QUADRANT_PLOTS_FOLDER, exist_ok=True)
 
     # Define run parameters for scenarios
+    # Define the parameters
     run_params = [
         {
             "baseline_scenario": "NGFS2023GCAM_CP",
@@ -44,6 +45,30 @@ if __name__ == "__main__":
             "shock_year": 2030,
             "scenario_geography": "Global",
         },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_NZ2050",
+            "shock_year": 2025,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_NZ2050",
+            "shock_year": 2030,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_B2DS",
+            "shock_year": 2025,
+            "scenario_geography": "Global",
+        },
+        {
+            "baseline_scenario": "NGFS2023REMIND_CP",
+            "target_scenario": "NGFS2023REMIND_B2DS",
+            "shock_year": 2030,
+            "scenario_geography": "Global",
+        },
     ]
 
     # Section 1: Run R Analysis
@@ -54,15 +79,12 @@ if __name__ == "__main__":
     print("R analysis completed.")
 
     # Section 2: Plot Density Distributions
-    print("Generating density plots...")
-    selected_sectors = ["Power"]
+    print("Génération des graphiques de densité...")
+    npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)
     plot_density_distributions(
-        data_source_folder=DATA_SOURCE_FOLDER,
-        plots_folder=DENSITY_PLOTS_FOLDER,
-        selected_sectors=selected_sectors,
-        run_params=run_params,
+        npv_df=npv_df, params_df=params_df, plots_folder=DENSITY_PLOTS_FOLDER
     )
-    print("Density plots generated.")
+    print("Graphiques de densité générés.")
 
     # Section 3: Plot Bivariate Scenario Quadrants
     print("Generating quadrant plots...")
