@@ -1,0 +1,388 @@
+```{r}
+library(stress.test.plot.report)
+library(dplyr)
+library(ggplot2)
+```
+
+
+# parameters
+
+```{r}
+# tiltrisk_input_path <- here::here("workspace","tiltrisk","tiltrisk_alpha.csv")
+tiltrisk_input_path <- here::here("workspace","tiltrisk","tiltrisk_nrisk.csv") 
+#         Change_NPV_shock 
+#         Change_NPV_with_ecosystem_cost
+#         Change_NPV_with_ecosystem_social_cost
+
+tiltrisk_trajectories_input_path <- here::here("workspace","tiltrisk","tiltrisk_trajectories.csv")
+```
+
+# dataload
+
+```{r}
+tiltrisk_df <- readr::read_csv(tiltrisk_input_path) %>%
+  rename(activity_name=`Activity Name`)
+
+tiltrisk_df <- tiltrisk_df %>%
+      mutate(
+        pd_difference = pd_shock - pd_baseline,
+        crispy_perc_value_change=Change_NPV_with_physical_risk
+      )
+
+```
+
+# dataprep
+
+```{r}
+
+get_tiltrisk_plot_df <- function(tiltrisk_df, group_cols){
+    tiltrisk_plot_df <- tiltrisk_df %>% 
+      group_by_at(c(group_cols, "term")) %>%
+      summarise(
+        crispy_perc_value_change = mean(crispy_perc_value_change),
+        pd_baseline=mean(pd_baseline),
+        pd_shock=mean(pd_shock),
+        .groups="drop"
+      ) %>%
+      mutate(
+        pd_difference = pd_shock - pd_baseline
+      )
+    return(tiltrisk_plot_df)
+}
+
+basic_group_cols <- c("run_id", "baseline_scenario", "shock_scenario", "country")
+
+tiltrisk_plot_df_companies_main_activity <- get_tiltrisk_plot_df(tiltrisk_df, c(basic_group_cols, "main_activity"))
+
+tiltrisk_plot_df_companies_clustered <- get_tiltrisk_plot_df(tiltrisk_df, c(basic_group_cols, "clustered"))
+
+
+tiltrisk_cluster_activity <- get_tiltrisk_plot_df(tiltrisk_df, c("run_id", "baseline_scenario", "shock_scenario", "country", "main_activity", "clustered"))
+
+
+```
+
+```{r}
+tiltrisk_plot_df_companies_main_activity %>%
+  readr::write_csv(here::here("workspace","tiltrisk","tiltrisk_agg_main_activity.csv"))
+
+tiltrisk_plot_df_companies_main_activity %>%
+  readr::write_csv(here::here("workspace","tiltrisk","tiltrisk_agg_clustered.csv"))
+
+```
+
+# plots
+
+```{r}
+
+for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
+  plot_data <- tiltrisk_plot_df_companies_main_activity %>%
+    filter(run_id==run_id_i)
+  
+
+  shock_scenario = unique(plot_data$shock_scenario)
+  for (loc in unique(plot_data$country)){
+    crispy_npv_change_plot <- pipeline_crispy_npv_change_plot(
+      plot_data |> dplyr::filter(term==1, country==loc),
+      x_var = "main_activity"
+      ) + 
+      ggplot2::ggtitle(paste(shock_scenario, '-',  loc))
+    
+      
+      print(crispy_npv_change_plot)
+    }
+}
+```
+
+```{r, fig.height=8}
+
+
+for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
+  plot_data <- tiltrisk_plot_df_companies_main_activity %>%
+    filter(run_id==run_id_i)
+  
+
+  shock_scenario = unique(plot_data$shock_scenario)
+  for (loc in unique(plot_data$country)){
+    
+      pd_term_plot <- pipeline_crispy_pd_term_plot(
+        crispy_data_agg = plot_data %>% filter(country==loc),
+        facet_var = "main_activity"
+      ) + 
+        ggplot2::ggtitle(paste(shock_scenario, '-',  loc))
+      
+      print(pd_term_plot)
+    }
+}
+  
+
+
+```
+
+# Crispy sensitivity analysis
+
+```{r}
+# Calculate the average ROC per company for the second plot
+df_averages <- tiltrisk_df |>
+  dplyr::group_by(
+    company_name,
+    country,
+    run_id,
+    main_activity,
+    shock_scenario,
+    shock_year
+  ) |>
+  dplyr::summarise(
+    average_roc = mean(crispy_perc_value_change),
+    average_pd_diff = mean(pd_difference)
+  ) %>%
+  rename(
+    `Average PD Difference` = average_pd_diff,
+    `Average NPV % change` = average_roc
+  )
+
+# Reshape data to long format
+long_data <- df_averages %>%
+  tidyr::pivot_longer(
+    cols = c(`Average PD Difference`, `Average NPV % change`),
+    names_to = "metric",
+    values_to = "value"
+  )
+
+# Calculate means and confidence intervals
+data_summary <- long_data %>%
+  group_by(
+    run_id,
+    country,
+    shock_scenario,
+    shock_year,
+    main_activity,
+    metric
+  ) %>%
+  summarise(
+    mean = mean(value),
+    se = sd(value) / sqrt(n()),
+    ci_upper = mean + qt(0.975, df = n() - 1) * se,
+    ci_lower = mean - qt(0.975, df = n() - 1) * se
+  ) %>%
+  ungroup()
+
+
+
+
+for (run_id in unique(data_summary$run_id)) {
+  plot_data <- data_summary %>% dplyr::filter(.data$run_id == .env$run_id)
+  for (loc in unique(plot_data$country)){
+  p1 <-
+    ggplot(
+      plot_data %>% filter(country==loc),
+      aes(x = main_activity, y = mean, fill = metric)
+    ) +
+    geom_bar(stat = "identity", position = position_dodge()) +
+    geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper),
+      width = 0.2,
+      position = position_dodge(0.9)
+    ) +
+    facet_wrap(~metric, scales = "free_y") +
+    scale_fill_manual(values = c(
+      "Average NPV % change" = "#5D9324",
+      "Average PD Difference" = "#BAB6B5"
+    )) +
+    scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+    r2dii.plot::theme_2dii() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "none"
+    ) +
+    labs(y = "Average Value", x = "Business Unit") +
+    ggtitle(paste(
+      loc,
+      "-",
+      plot_data[1, "shock_scenario"] %>% pull()
+      # , "- shock year :",
+      # plot_data[1, "shock_year"] %>% pull()
+    ))
+
+  print(p1)
+  }
+}
+```
+
+```{r}
+
+```
+
+````{=html}
+<!--
+```{r, fig.height=10}
+
+for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
+  
+  data_plot <- tiltrisk_plot_df_companies_clustered %>%
+    filter(run_id==run_id_i)
+
+  pd_term_plot <- pipeline_crispy_pd_term_plot(
+    crispy_data_agg = data_plot,
+    facet_var = "clustered"
+  )
+  print(pd_term_plot)
+
+}
+```
+-->
+````
+
+# PD distrib plots
+
+```{r}
+
+for (run_id_i in unique(tiltrisk_plot_df_companies_main_activity$run_id)){
+  data_plot <- tiltrisk_df %>%
+    filter(run_id==run_id_i, term==1)
+  
+  filtering <- data_plot %>% 
+    distinct(country ,main_activity ,companies_id) %>% 
+    group_by(country, main_activity) %>% 
+    summarise(nrow=n()) %>%
+    filter(nrow>10) %>%
+    select(-nrow) %>%
+    ungroup()
+
+  data_plot <- data_plot %>% inner_join(filtering)
+  
+  shock_scenario <- unique(data_plot$shock_scenario)
+  
+  density_plot <- make_density_plots(data_plot,
+    numeric_values = "pd_shock",
+    density_var = "country",
+    group_variable="main_activity"
+  ) +
+    ggplot2::ggtitle(paste0("Distribution of PD at shock for ", shock_scenario, "shock scenario"))
+  
+  print(density_plot)
+}
+```
+
+### Heterogeneity in Transition Risk
+
+```{r, fig.width=10}
+for (run_id_i in unique(tiltrisk_df$run_id)) {
+  data_plot <- tiltrisk_df |> 
+    dplyr::filter(run_id == run_id_i)
+
+  agg_analysis_data <- data_plot |>
+    # dplyr::filter(.data$net_present_value_difference != 0) |>
+    dplyr::select(.data$company_name, .data$crispy_perc_value_change, .data$pd_difference) |>
+    dplyr::group_by(.data$company_name) |>
+    dplyr::summarise(
+      crispy_perc_value_change = mean(crispy_perc_value_change),
+      pd_difference = mean(pd_difference),
+      .groups = "drop"
+    )
+
+  # Sorting categories based on value1 in descending order
+  plot_data <- agg_analysis_data |>
+    # sample_frac(0.1) |>
+    dplyr::arrange(dplyr::desc(.data$crispy_perc_value_change)) |>
+    dplyr::mutate(company_name = factor(.data$company_name, levels = .data$company_name)) |>
+    tidyr::pivot_longer(cols = c("crispy_perc_value_change", "pd_difference"), names_to = "variable", values_to = "value")
+
+
+  # Plotting
+  p1 <- ggplot(plot_data %>% filter(variable == "crispy_perc_value_change"), aes(x = factor(company_name), y = value, group = variable)) +
+    geom_step(color = "#5D9324", size = 1) +
+    scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1),
+      breaks = scales::pretty_breaks(n = 5)
+    ) +
+    geom_hline(yintercept = 0, color = "lightgray", linetype = "dashed", size = 0.5) +
+    r2dii.plot::theme_2dii() +
+    theme(
+      axis.text.x = element_blank(), # element_text(angle = 90, vjust = 0.5),
+      axis.ticks.x = element_blank(),
+      axis.title.y = element_text(size = 11),
+      strip.background = element_blank(),
+      strip.placement = "outside",
+      legend.position = "none"
+    ) +
+    labs(x = NULL, y = NULL) +
+    guides(fill = NULL) +
+    ylab("Mean company percent value change")
+
+
+
+  # Function to create bins every 10 observations
+  bin_data <- function(data, bin_size) {
+    data <- data %>%
+      mutate(bin = (as.numeric(row_number()) - 1) %/% bin_size) %>%
+      group_by(bin) %>%
+      summarise(
+        avg = mean(value),
+        min = min(value),
+        max = max(value)
+      ) %>%
+      ungroup()
+    return(data)
+  }
+
+  # Bin data every 10 observations
+  binned_data <- bin_data(plot_data %>% filter(variable == "pd_difference"), round(nrow(plot_data) / 100))
+
+  # Create the plot
+  p2 <- ggplot(binned_data, aes(x = factor(bin), y = avg)) +
+    geom_col(fill = "#BAB6B5") +
+    geom_errorbar(aes(ymin = min, ymax = max), width = 0.2) +
+    scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1),
+      breaks = scales::pretty_breaks(n = 5)
+    ) +
+    r2dii.plot::theme_2dii() +
+    theme(
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.title.y = element_text(size = 11),
+      strip.background = element_blank(),
+      strip.placement = "outside"
+    ) +
+    labs(x = NULL, y = NULL) +
+    guides(fill = NULL) +
+    ylab("Mean climate Transition-related PD difference")
+
+  le_plot <- cowplot::plot_grid(p1, p2, ncol = 1, align = "v")
+
+  title <- cowplot::ggdraw() +
+    cowplot::draw_label(
+      paste(
+        data_plot[1, "shock_scenario"] %>% pull(),
+        " - shock year :",
+        data_plot[1, "shock_year"] %>% pull()
+      ),
+      fontface = "bold",
+      x = 0.5,
+      hjust = 0.5
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+
+  le_plot <- cowplot::plot_grid(
+    title, le_plot,
+    ncol = 1,
+    # rel_heights values control vertical title margins
+    rel_heights = c(0.1, 1)
+  )
+
+  print(le_plot)
+}
+```
+
+
+## Funding
+
+EU LIFE Project Grant
+
+Scientific Transition Risk Exercises for Stress tests & Scenario Analysis has received funding from the European Union’s Life programme under Grant No. LIFE21-GIC-DE-Stress under the LIFE-2021-SAP-CLIMA funding call.
+
+![](../../images/LifeLogo2.jpg)
