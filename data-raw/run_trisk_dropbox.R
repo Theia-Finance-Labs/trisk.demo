@@ -1,5 +1,5 @@
 library(r2dii.utils)
-library(trisk.model)
+library(trisk.analysis)
 
 
 run_with_aggregated_countries_on_global_geography <- TRUE
@@ -10,7 +10,7 @@ if (run_with_aggregated_countries_on_global_geography) {
     "ST INPUTS",
     "ST_INPUTS_AI_GEOGRAPHIES"
   )
-} else { 
+} else {
   st_inputs_folder <-
     r2dii.utils::path_dropbox_2dii(
     "ST INPUTS",
@@ -25,7 +25,6 @@ trisk.model::run_trisk(
   baseline_scenario = "GECO2023_CurPol",
   target_scenario = "GECO2023_NDC-LTS",
   carbon_price_model = "no_carbon_tax",
-  lgd = 0.45,
   risk_free_rate = 0.02,
   discount_rate = 0.07,
   growth_rate = 0.03,
@@ -33,3 +32,5 @@ trisk.model::run_trisk(
   shock_year = 2030,
   market_passthrough = 0
 )
+
+

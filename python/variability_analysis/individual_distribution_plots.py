@@ -186,10 +186,115 @@ def plot_comparison_between_shock_years(
             print(f"Comparison graph for {tech} saved in {imgpath}")
 
 
+def plot_comparison_between_shock_years_barplot(
+    data_df, params_df, plots_folder, value_type, category_column
+):
+    """
+    Plots grouped bar plots for two runs of the same target scenario but different shock years,
+    for each technology.
+
+    Args:
+    data_df (pd.DataFrame): The dataframe containing the data.
+    params_df (pd.DataFrame): The dataframe with run parameters.
+    plots_folder (str): The directory where plots will be saved.
+    value_type (str): The type of value to plot.
+    category_column (str): The category column (e.g., 'technology').
+    """
+    comparison_folder = os.path.join(plots_folder, "comparison_shock_years_barplot")
+    os.makedirs(comparison_folder, exist_ok=True)
+
+    target_scenarios = params_df["target_scenario"].unique()
+    technologies = data_df[category_column].unique()
+
+    for target_scenario in target_scenarios:
+        scenario_runs = params_df[params_df["target_scenario"] == target_scenario]
+        shock_years = scenario_runs["shock_year"].unique()
+
+        if len(shock_years) < 2:
+            print(
+                f"Not enough shock years for target scenario: {target_scenario} to compare."
+            )
+            continue
+
+        # Select two shock years for comparison
+        shock_year_1, shock_year_2 = shock_years[:2]
+        run_ids_1 = scenario_runs[scenario_runs["shock_year"] == shock_year_1]["run_id"]
+        run_ids_2 = scenario_runs[scenario_runs["shock_year"] == shock_year_2]["run_id"]
+
+        for tech in technologies:
+            data_tech = data_df[data_df[category_column] == tech]
+            data_1 = data_tech[data_tech["run_id"].isin(run_ids_1)]
+            data_2 = data_tech[data_tech["run_id"].isin(run_ids_2)]
+
+            if data_1.empty or data_2.empty:
+                print(
+                    f"Not enough data for technology: {tech} in scenario: {target_scenario}"
+                )
+                continue
+
+            plt.figure(figsize=(14, 8), dpi=250)
+            ax = plt.gca()
+
+            # Bin calculation based on overall min and max values for both datasets
+            values = np.concatenate(
+                [data_1[value_type].values, data_2[value_type].values]
+            )
+            min_val = values.min()
+            max_val = values.max()
+            num_bins = 10
+            bin_edges = np.linspace(min_val, max_val, num_bins + 1)
+            bar_width = (
+                bin_edges[1] - bin_edges[0]
+            ) / 3  # Width per bar for better spacing
+
+            # Plot for shock_year_1
+            counts_1, _ = np.histogram(data_1[value_type].values, bins=bin_edges)
+            bar_positions_1 = bin_edges[:-1]  # Original bin positions
+            ax.bar(
+                bar_positions_1 - bar_width / 2,
+                counts_1,
+                width=bar_width,
+                edgecolor="black",
+                label=f"Shock Year: {shock_year_1}",
+                color="blue",
+                alpha=0.7,
+            )
+
+            # Plot for shock_year_2
+            counts_2, _ = np.histogram(data_2[value_type].values, bins=bin_edges)
+            bar_positions_2 = bin_edges[:-1]  # Same bin positions shifted
+            ax.bar(
+                bar_positions_2 + bar_width / 2,
+                counts_2,
+                width=bar_width,
+                edgecolor="black",
+                label=f"Shock Year: {shock_year_2}",
+                color="orange",
+                alpha=0.7,
+            )
+
+            plt.title(
+                f"Comparison of {value_type} - Target Scenario: {target_scenario} - Technology: {tech}",
+                fontsize=18,
+            )
+            plt.xlabel(f"{value_type.replace('_', ' ').title()}", fontsize=14)
+            plt.ylabel("Density", fontsize=14)
+            plt.legend(fontsize=10)
+            plt.tight_layout()
+
+            imgpath = os.path.join(
+                comparison_folder, f"comparison_{target_scenario}_{tech}.png"
+            )
+            plt.savefig(imgpath)
+            plt.close()
+            print(f"Grouped bar plot comparison for {tech} saved in {imgpath}")
+
+
 if __name__ == "__main__":
     # Constants
     DATA_SOURCE_FOLDER = os.path.join("workspace", "india_variability_analysis")
     PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_individual_comparisons")
+    PLOTS_FOLDER2 = os.path.join(DATA_SOURCE_FOLDER, "plots_bar_individual_comparisons")
 
     # Load data
     npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)
@@ -197,6 +302,15 @@ if __name__ == "__main__":
     if npv_df is None or pd_df is None or params_df is None:
         print("Data loading failed. Exiting program.")
     else:
+        # Plot comparison between shock years for all scenarios using bar plots
+        plot_comparison_between_shock_years_barplot(
+            npv_df,
+            params_df,
+            PLOTS_FOLDER2,
+            "net_present_value_change",
+            "technology",
+        )
+
         # Plot individual distributions for technologies
         plot_individual_distributions_by_technology(
             npv_df, params_df, PLOTS_FOLDER, "net_present_value_change", "technology"

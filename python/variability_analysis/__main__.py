@@ -1,5 +1,6 @@
 import os
-from .distribution_plots import plot_density_distributions
+import pandas as pd
+from .distribution_plots import plot_density_distributions, plot_barplot_distributions
 from .quadrant_plots import plot_bivariate_scenarios_quadrants
 from .generate_data import run_r_analysis
 from .utils import load_data
@@ -7,7 +8,77 @@ from .grouped_distrib_plots import plot_grouped_distributions
 from .individual_distribution_plots import (
     plot_individual_distributions_by_technology,
     plot_comparison_between_shock_years,
+    plot_comparison_between_shock_years_barplot,
 )
+
+
+def generate_technology_stats(npv_df, params_df, output_file):
+    """
+    Generates statistics for each technology and saves them into one Excel file.
+    Adds a "Technology" column to differentiate between the technologies.
+
+    Parameters:
+    - npv_df: DataFrame containing the net present value (NPV) data.
+    - params_df: DataFrame containing parameter data.
+    - output_file: The file path where the Excel file will be saved.
+    """
+    # Ensure the output folder exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    # Get unique technologies in the npv_df
+    technologies = npv_df["technology"].unique()
+
+    # List to collect all DataFrames for concatenation
+    all_tech_stats = []
+
+    # Loop through each technology and collect their stats
+    for tech in technologies:
+        tech_df = npv_df[npv_df["technology"] == tech].merge(params_df)
+
+        # Group by without 'run_id' and compute aggregations
+        stats_df = tech_df.groupby(["target_scenario", "shock_year"]).agg(
+            median_npv_change=("net_present_value_change", "median"),
+            mean_npv_change=("net_present_value_change", "mean"),
+            std_npv_change=("net_present_value_change", "std"),
+            unique_company_count=("company_id", "nunique"),
+            min_npv_change=("net_present_value_change", "min"),
+            max_npv_change=("net_present_value_change", "max"),
+            q1_npv_change=("net_present_value_change", lambda x: x.quantile(0.25)),
+            q3_npv_change=("net_present_value_change", lambda x: x.quantile(0.75)),
+            count_observations=("net_present_value_change", "count"),
+        )
+
+        # Prettify the numeric values by rounding them to 2 decimal places
+        stats_df = stats_df.round(4)
+
+        # Add a "Technology" column
+        stats_df["Technology"] = tech
+
+        # Reset index and rename columns
+        stats_df = stats_df.reset_index().rename(
+            columns={
+                "target_scenario": "Target Scenario",
+                "shock_year": "Shock Year",
+                "median_npv_change": "Median NPV Change",
+                "mean_npv_change": "Mean NPV Change",
+                "std_npv_change": "Standard Deviation NPV Change",
+                "unique_company_count": "Unique Company Count",
+                "min_npv_change": "Minimum NPV Change",
+                "max_npv_change": "Maximum NPV Change",
+                "q1_npv_change": "First Quartile NPV Change (Q1)",
+                "q3_npv_change": "Third Quartile NPV Change (Q3)",
+                "count_observations": "Number of Observations",
+            }
+        )
+
+        # Append the dataframe to the list
+        all_tech_stats.append(stats_df)
+
+    # Concatenate all dataframes into one
+    final_df = pd.concat(all_tech_stats, ignore_index=True)
+
+    # Save the concatenated DataFrame to a single Excel file
+    final_df.to_excel(output_file, index=False)
 
 
 if __name__ == "__main__":
@@ -16,6 +87,7 @@ if __name__ == "__main__":
         "workspace", "india_variability_analysis_INDIA_geo_2"
     )
     DENSITY_PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_distributions")
+    HISTOGRAM_PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_histograms")
     QUADRANT_PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_quadrants")
     GROUPED_PLOTS_FOLDER = os.path.join(
         DATA_SOURCE_FOLDER, "plots_distributions_grouped"
@@ -84,32 +156,15 @@ if __name__ == "__main__":
     print("Running R analysis...")
     country_iso2 = "IN"
     sector = "Power"
-    run_r_analysis(TRISK_INPUT_PATH, R_OUTPUT_PATH, run_params, country_iso2, sector)
+    # run_r_analysis(TRISK_INPUT_PATH, R_OUTPUT_PATH, run_params, country_iso2, sector)
     print("R analysis completed.")
 
     print("Génération des graphiques de densité...")
     npv_df, pd_df, params_df, trajectories_df = load_data(DATA_SOURCE_FOLDER)
 
-    npv_df[npv_df["technology"] == "HydroCap"].merge(params_df).groupby(
-        ["run_id", "target_scenario", "shock_year"]
-    ).agg(
-        median_npv=("net_present_value_change", "median"),
-        mean_npv=("net_present_value_change", "mean"),
-        std_npv=("net_present_value_change", "std"),
-        unique_company_count=("company_id", "nunique"),
-    ).to_csv(
-        "workspace/india_variability_analysis_INDIA_geo_2/hydrocap_stats.csv"
-    )
-
-    npv_df[npv_df["technology"] == "OilCap"].merge(params_df).groupby(
-        ["run_id", "target_scenario", "shock_year"]
-    ).agg(
-        median_npv=("net_present_value_change", "median"),
-        mean_npv=("net_present_value_change", "mean"),
-        std_npv=("net_present_value_change", "std"),
-        unique_company_count=("company_id", "nunique"),
-    ).to_csv(
-        "workspace/india_variability_analysis_INDIA_geo_2/oilcap_stats.csv"
+    # Call the function to generate and save technology stats
+    generate_technology_stats(
+        npv_df, params_df, os.path.join(DATA_SOURCE_FOLDER, "statdesc.xlsx")
     )
 
     # Section 2: Plot Density Distributions
@@ -119,6 +174,13 @@ if __name__ == "__main__":
         pd_df=pd_df,
         params_df=params_df,
         plots_folder=DENSITY_PLOTS_FOLDER,
+    )
+
+    plot_barplot_distributions(
+        npv_df=npv_df,
+        pd_df=pd_df,
+        params_df=params_df,
+        plots_folder=HISTOGRAM_PLOTS_FOLDER,
     )
     print("Graphiques de densité générés.")
 
@@ -158,6 +220,9 @@ if __name__ == "__main__":
     individual_distrib_plots_folder = os.path.join(
         DATA_SOURCE_FOLDER, "plots_individual_comparisons"
     )
+    individual_distrib_plots_folder2 = os.path.join(
+        DATA_SOURCE_FOLDER, "plots_individual_comparisons_bar"
+    )
 
     plot_individual_distributions_by_technology(
         npv_df,
@@ -171,6 +236,14 @@ if __name__ == "__main__":
         npv_df,
         params_df,
         individual_distrib_plots_folder,
+        "net_present_value_change",
+        "technology",
+    )
+
+    plot_comparison_between_shock_years_barplot(
+        npv_df,
+        params_df,
+        individual_distrib_plots_folder2,
         "net_present_value_change",
         "technology",
     )
