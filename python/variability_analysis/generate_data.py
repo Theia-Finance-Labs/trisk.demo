@@ -32,18 +32,17 @@ def run_r_analysis(input_path, project_output_path, run_params, country_iso2, se
         {str(i): ListVector(params) for i, params in enumerate(run_params)}
     )
 
-    # Assign parameters to the R environment
-    robjects.globalenv["input_path"] = input_path
-    robjects.globalenv["project_output_path"] = project_output_path
-    robjects.globalenv["run_params"] = run_params_r
-    robjects.globalenv["country_iso2"] = country_iso2
-    robjects.globalenv["sector"] = sector
-
     # Define the R function to run
     run_analysis_r = robjects.r["run_analysis"]
 
     # Call the R function with parameters
-    run_analysis_r(input_path, project_output_path, run_params_r, country_iso2, sector)
+    run_analysis_r(
+        input_path=input_path,
+        project_output_path=project_output_path,
+        run_params=run_params_r,
+        country_iso2=country_iso2,
+        sector=sector,
+    )
 
 
 if __name__ == "__main__":

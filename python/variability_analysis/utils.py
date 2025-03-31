@@ -28,10 +28,12 @@ def load_data(source):
 
         params_df = pd.read_csv(os.path.join(source, "params.csv"))
 
-        return npv_df, pd_df, params_df
+        trajectories_df = pd.read_csv(os.path.join(source, "trajectories.csv"))
+
+        return npv_df, pd_df, params_df, trajectories_df
     except FileNotFoundError as e:
         print(f"Error loading data: {e}")
-        return None, None, None
+        return None, None, None, None
 
 
 # Function to filter data based on multiple criteria
