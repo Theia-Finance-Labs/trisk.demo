@@ -153,9 +153,9 @@ options(r2dii_dropbox=r2dii_dropbox)
 # parameters ========================================
 path_ar_data_raw <-
   r2dii.utils::path_dropbox_2dii(
-    "ST_INPUTS",
+    "ST INPUTS",
     "ST_INPUTS_PRODUCTION",
-    "AR-Company-Indicators_2022Q4.xlsx"
+    "AR-Company-Indicators_2023Q4.xlsx"
   )
 
 outputs_list <- prepare_asset_impact_data(ar_data_path = path_ar_data_raw)
@@ -184,9 +184,9 @@ scenarios <- read_csv("workspace/trisk_inputs_v2_legacy_countries2/scenarios.csv
 geo_countries <- scenarios %>% distinct(scenario_geography, country_iso2_list) 
 
 # use_countries <- geo_countries %>% filter(scenario_geography=="MiddleEastAndAfrica") %>% pull(country_iso2_list)
-use_countries <- "AO,BJ,BW,BF,BI,CV,CM,CF,TD,KM,CD,CG,CI,DJ,GQ,ER,ET,GA,GM,GH,GN,GW,KE,LS,LR,MG,MW,ML,MR,MU,MZ,NA,NE,NG,RW,ST,SN,SC,SL,SO,ZA,SS,SD,TZ,TG,UG,ZM,ZW"
+# use_countries <- "AO,BJ,BW,BF,BI,CV,CM,CF,TD,KM,CD,CG,CI,DJ,GQ,ER,ET,GA,GM,GH,GN,GW,KE,LS,LR,MG,MW,ML,MR,MU,MZ,NA,NE,NG,RW,ST,SN,SC,SL,SO,ZA,SS,SD,TZ,TG,UG,ZM,ZW"
 
-
+use_countries <- "MY"
 # Step 1: Split the string into a vector
 use_countries_vector <- strsplit(use_countries, ",")[[1]]
 

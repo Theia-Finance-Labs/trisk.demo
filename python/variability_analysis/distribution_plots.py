@@ -428,8 +428,14 @@ def plot_barplot_by_category(
 
         plt.title(title, fontsize=18)
         plt.xlabel(f"{value_type.replace('_', ' ').title()}", fontsize=14)
-        plt.ylabel("Density", fontsize=14)
+        plt.ylabel(
+            "Count", fontsize=14
+        )  # Changed from "Density" to "Count" for accuracy
         plt.legend(fontsize=10)
+
+        # **Add the percentage formatter for the x-axis**
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.0%}"))
+
         plt.tight_layout()
 
         imgpath = os.path.join(plots_folder, f"{title.replace(' ', '_')}.png")
@@ -491,8 +497,14 @@ def plot_barplot_by_run(data_df, params_df, plots_folder, value_type, category_c
 
         plt.title(title, fontsize=18)
         plt.xlabel(f"{value_type.replace('_', ' ').title()}", fontsize=14)
-        plt.ylabel("Density", fontsize=14)
+        plt.ylabel(
+            "Count", fontsize=14
+        )  # Changed from "Density" to "Count" for accuracy
         plt.legend(fontsize=10)
+
+        # **Add the percentage formatter for the x-axis**
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.0%}"))
+
         plt.tight_layout()
 
         imgpath = os.path.join(plots_folder, f"{title.replace(' ', '_')}.png")
@@ -503,9 +515,11 @@ def plot_barplot_by_run(data_df, params_df, plots_folder, value_type, category_c
 
 if __name__ == "__main__":
     # Constants
-    DATA_SOURCE_FOLDER = os.path.join("workspace", "india_variability_analysis")
-    PLOTS_FOLDER = os.path.join(DATA_SOURCE_FOLDER, "plots_distributions")
-    PLOTS_FOLDER2 = os.path.join(DATA_SOURCE_FOLDER, "plots_histograms")
+    DATA_SOURCE_FOLDER = os.path.join(
+        "workspace", "india_variability_analysis_INDIA_geo_2"
+    )
+    PLOTS_FOLDER = os.path.join("workspace", "out_india", "plots_distributions22")
+    PLOTS_FOLDER2 = os.path.join("workspace", "out_india", "plots_histograms")
 
     # Load data
     npv_df, pd_df, params_df = load_data(DATA_SOURCE_FOLDER)

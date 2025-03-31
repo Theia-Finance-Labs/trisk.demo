@@ -168,7 +168,7 @@ if __name__ == "__main__":
     )
 
     # Section 2: Plot Density Distributions
-
+    # YES DONE
     plot_density_distributions(
         npv_df=npv_df,
         pd_df=pd_df,
@@ -176,6 +176,7 @@ if __name__ == "__main__":
         plots_folder=DENSITY_PLOTS_FOLDER,
     )
 
+    # YES
     plot_barplot_distributions(
         npv_df=npv_df,
         pd_df=pd_df,
@@ -203,6 +204,7 @@ if __name__ == "__main__":
 
     # Section 4: Plot Grouped Distributions
     print("Generating grouped distribution plots...")
+    # NO
     plot_grouped_distributions(
         npv_df,
         params_df,
@@ -210,6 +212,7 @@ if __name__ == "__main__":
         "net_present_value_change",
         "technology",
     )
+    # NO
     plot_grouped_distributions(
         pd_df, params_df, GROUPED_PLOTS_FOLDER, "pd_difference", "sector"
     )
@@ -220,10 +223,11 @@ if __name__ == "__main__":
     individual_distrib_plots_folder = os.path.join(
         DATA_SOURCE_FOLDER, "plots_individual_comparisons"
     )
+
     individual_distrib_plots_folder2 = os.path.join(
         DATA_SOURCE_FOLDER, "plots_individual_comparisons_bar"
     )
-
+    # YES
     plot_individual_distributions_by_technology(
         npv_df,
         params_df,
@@ -232,6 +236,7 @@ if __name__ == "__main__":
         "technology",
     )
     # Plot comparison between shock years for all scenarios
+    # YES
     plot_comparison_between_shock_years(
         npv_df,
         params_df,
@@ -240,6 +245,7 @@ if __name__ == "__main__":
         "technology",
     )
 
+    # NO
     plot_comparison_between_shock_years_barplot(
         npv_df,
         params_df,
