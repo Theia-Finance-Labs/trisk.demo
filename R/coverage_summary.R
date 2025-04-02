@@ -150,134 +150,160 @@ pivot_equity_ownership_columns <- function(ar_data) {
 options(r2dii_dropbox=r2dii_dropbox)
 
 
-# parameters ========================================
+# Define a helper function that creates the Excel file based on the filters provided
+create_excel_for_filters <- function(companies_filter = NULL, countries_filter = NULL, file_name, total_ghg, selected_year) {
+  
+  # --- Process Emissions ---
+  filtered_company_emissions <- company_emissions %>% 
+    dplyr::filter(
+      activity_unit %in% c("tCO2", "tCO2e"),
+      year == selected_year
+    )
+  
+  # Apply country filter if provided
+  if (!is.null(countries_filter)) {
+    filtered_company_emissions <- filtered_company_emissions %>% 
+      dplyr::filter(.data$ald_location %in% countries_filter)
+  }
+  
+  # Apply company filter if provided
+  if (!is.null(companies_filter)) {
+    filtered_company_emissions <- filtered_company_emissions %>% 
+      dplyr::filter(company_id %in% companies_filter)
+  }
+  
+  filtered_company_emissions <- filtered_company_emissions %>%
+    dplyr::group_by(company_id, company_name, ald_sector, technology, region, ald_location, activity_unit) %>%
+    dplyr::summarise(emissions = sum(equity_ownership, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::rename(country_iso2 = ald_location, sector = ald_sector) %>%
+    dplyr::inner_join(map_countries, by = c("country_iso2" = "country_iso2"))
+  
+  grouped_company_emissions <- filtered_company_emissions %>%
+    dplyr::group_by(.data$country, .data$sector, .data$technology) %>%
+    dplyr::summarise(`Emissions (tCO2/tCO2e)` = sum(emissions, na.rm = TRUE), .groups = "drop")
+  
+  count_companies <- filtered_company_emissions %>%
+    dplyr::distinct(company_id, country, country_iso2, sector, technology) %>%
+    dplyr::group_by(.data$country, .data$sector, .data$technology) %>%
+    dplyr::summarise(`Number of Companies` = dplyr::n(), .groups = "drop") %>%
+    dplyr::arrange(dplyr::desc(`Number of Companies`))
+  
+  summary_companies <- count_companies %>%
+    dplyr::left_join(grouped_company_emissions, by = c("country", "sector", "technology"))
+  
+  summary_companies <- summary_companies %>%
+    dplyr::group_by(.data$sector) %>%
+    dplyr::mutate(`Percentage of Emissions in Sector` = (`Emissions (tCO2/tCO2e)` / sum(`Emissions (tCO2/tCO2e)`))) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(`Percentage of Total Emissions` = (`Emissions (tCO2/tCO2e)` / sum(`Emissions (tCO2/tCO2e)`))) %>%
+    dplyr::rename(`Country` = .data$country, `Technology` = .data$technology) %>%
+    dplyr::mutate(Technology = dplyr::case_when(
+      grepl("Cap$", .data$Technology) ~ paste0(sub("Cap$", "", .data$Technology), " - Generation"),
+      .data$Technology %in% c("Oil", "Gas", "Coal") ~ paste0(.data$Technology, " - Extraction"),
+      TRUE ~ .data$Technology
+    ))
+  
+  
+  # --- Process Company Activities ---
+  unique_companies <- company_activities %>% 
+    dplyr::filter(
+      activity_unit %in% c("t coal", "t cement", "t steel", "MW", "tkm", "pkm", "# vehicles", "GJ"),
+      year == selected_year
+    )
+  
+  # Apply country filter if provided
+  if (!is.null(countries_filter)) {
+    unique_companies <- unique_companies %>% 
+      dplyr::filter(.data$ald_location %in% countries_filter)
+  }
+  
+  # Apply company filter if provided
+  if (!is.null(companies_filter)) {
+    unique_companies <- unique_companies %>% 
+      dplyr::filter(company_id %in% companies_filter)
+  }
+  
+  n_unique_companies <- unique_companies %>% 
+    dplyr::distinct(company_id) %>% 
+    dplyr::count() %>% 
+    dplyr::rename(`Number of Unique Companies` = n)
+  
+  
+  # --- Summary Emissions ---
 
-path_ar_data_raw <-
-  r2dii.utils::path_dropbox_2dii(
-    "ST INPUTS",
-    "ST_INPUTS_PRODUCTION",
-    "AR-Company-Indicators_2023Q4.xlsx"
-  )
+  total_emissions <- summary_companies %>% 
+    dplyr::group_by(sector) %>% 
+    dplyr::summarise(`Total Emissions` = sum(`Emissions (tCO2/tCO2e)`)) %>% 
+    dplyr::mutate(
+      `Total GHG Malaysia` = total_ghg,
+      `Share of GHG` = `Total Emissions` / `Total GHG Malaysia`
+    )
+  
+  
+  # --- Write Excel Output ---
+  openxlsx::write.xlsx(list(
+    `Emissions Coverage` = summary_companies,
+    `Summary Emissions` = total_emissions,
+    `Summary Companies`   = n_unique_companies
+  ), file = file_name)
+}
+
+# ----------------------
+# Define paths and filters
+path_ar_data_raw <- r2dii.utils::path_dropbox_2dii(
+  "ST INPUTS",
+  "ST_INPUTS_PRODUCTION",
+  "AR-Company-Indicators_2023Q4.xlsx"
+)
 
 outputs_list <- prepare_asset_impact_data(ar_data_path = path_ar_data_raw)
 DB_company_activities <- outputs_list[["company_activities"]]
-DB_company_emissions <- outputs_list[["company_emissions"]]
+DB_company_emissions  <- outputs_list[["company_emissions"]]
 
-company_activities <-
-  pivot_equity_ownership_columns(DB_company_activities)
-company_emissions <-
-  pivot_equity_ownership_columns(DB_company_emissions)
+company_activities <- pivot_equity_ownership_columns(DB_company_activities)
+company_emissions  <- pivot_equity_ownership_columns(DB_company_emissions)
 
-
-# use_countries <- geo_countries %>% filter(scenario_geography=="MiddleEastAndAfrica") %>% pull(country_iso2_list)
-# use_countries <- "AO,BJ,BW,BF,BI,CV,CM,CF,TD,KM,CD,CG,CI,DJ,GQ,ER,ET,GA,GM,GH,GN,GW,KE,LS,LR,MG,MW,ML,MR,MU,MZ,NA,NE,NG,RW,ST,SN,SC,SL,SO,ZA,SS,SD,TZ,TG,UG,ZM,ZW"
+# For the selected country and company filters:
 use_countries <- "MY"
-# Step 1: Split the string into a vector
 use_countries_vector <- strsplit(use_countries, ",")[[1]]
 
+companies_HQ <- readxl::read_xlsx(path_ar_data_raw, sheet = "Company Information")
+use_companies <- companies_HQ %>% 
+  dplyr::filter(`Country of Domicile` %in% use_countries_vector) %>% 
+  dplyr::pull(`Company ID`)
 
-map_countries <- readr::read_rds("workspace/bench_regions.rds") %>% distinct(country_iso, country) %>% rename(country_iso2=country_iso)
+map_countries <- readr::read_rds("workspace/bench_regions.rds") %>% 
+  dplyr::distinct(country_iso, country) %>% 
+  dplyr::rename(country_iso2 = country_iso)
+
 selected_year <- 2022
-# ==================================================
-# EMISIONS PER TECHNOLOGY , AT THE LAST FORECAST YEAR
-# ==================================================
+total_ghg <- 325705280 #259326110 #325705280
+# ----------------------
+# Create Excel files for the three cases
 
-# Filter and summarize emissions
-filtered_company_emissions <- company_emissions %>% 
-  filter(activity_unit %in% c("tCO2", "tCO2e"), year==selected_year, .data$ald_location %in% use_countries_vector) %>%
-  group_by(company_id, company_name, ald_sector, technology, region, ald_location, activity_unit) %>%
-  summarise(emissions = sum(equity_ownership, na.rm = TRUE), .groups = "drop") %>%
-  rename(country_iso2 = ald_location, sector=ald_sector)  %>%
-  inner_join(map_countries)
-  #  %>% inner_join(filtered_assets %>% distinct(company_id, country_iso2, sector, technology), 
-  #            by = c("company_id", "technology", "country_iso2")) 
-    
-    
-grouped_company_emissions <-  filtered_company_emissions %>%
-    group_by(.data$country, .data$sector, .data$technology) %>%
-    summarise(`Emissions (tCO2/tCO2e)` = sum(emissions, na.rm = TRUE), .groups = "drop")
+# 1. Case: Filter on both company and country selected
+create_excel_for_filters(
+  companies_filter = use_companies,
+  countries_filter = use_countries_vector,
+  file_name = "workspace/coverage_companies_both.xlsx",
+  selected_year=selected_year,
+  total_ghg=total_ghg
+)
 
-# Aggregate and summarize the data
-count_companies <- filtered_company_emissions %>%
-  distinct(company_id, country, country_iso2, sector, technology) %>%
-  group_by(.data$country, .data$sector, .data$technology) %>%
-  summarise(`Number of Companies` = n(), .groups = "drop") %>%
-  arrange(desc(`Number of Companies`))
+# 2. Case: Filter only on country selected (ignore company filter)
+create_excel_for_filters(
+  companies_filter = NULL,
+  countries_filter = use_countries_vector,
+  file_name = "workspace/coverage_companies_country_only.xlsx",
+  selected_year=selected_year,
+  total_ghg=total_ghg
+)
 
-# Join emissions data to count_companies
-summary_companies <- count_companies %>%
-  left_join(grouped_company_emissions , 
-            by = c("country", "sector", "technology"))
-
-# Calculate the percentage of total emissions per sector
-summary_companies <- summary_companies %>%
-  group_by(.data$sector) %>%
-  mutate(`Percentage of Emissions in Sector` = (`Emissions (tCO2/tCO2e)` / sum(`Emissions (tCO2/tCO2e)`))) %>%
-  ungroup()
-
-summary_companies <- summary_companies %>%
-  mutate(`Percentage of Total Emissions` = (`Emissions (tCO2/tCO2e)` / sum(`Emissions (tCO2/tCO2e)`)))
-
-# Rename columns
-summary_companies <- summary_companies %>%
-  rename(`Country` = .data$country, `Technology` = .data$technology) 
-
-# Rename technologies based on the rules and remove "Cap"
-summary_companies <- summary_companies %>%
-  mutate(Technology = case_when(
-    grepl("Cap$", .data$Technology) ~ paste(sub("Cap$", "", .data$Technology), "- Generation"),
-    .data$Technology %in% c("Oil", "Gas", "Coal") ~ paste(.data$Technology, "- Extraction"),
-    TRUE ~ .data$Technology
-  )) 
-
-
-
-# # Save the filtered datasets to variables based on the updated technology names
-# power_nonrenewable <- dplyr::filter(summary_companies, .data$sector == "Power", !(.data$Technology %in%  c("Renewables - Generation", "Hydro - Generation")))
-# power_renewable <- dplyr::filter(summary_companies, .data$sector == "Power", (.data$Technology %in%  c("Renewables - Generation", "Hydro - Generation")))
-# coal <- dplyr::filter(summary_companies, .data$sector == "Coal")
-# oil_and_gas <- dplyr::filter(summary_companies, .data$sector == "Oil&Gas")
-# steel <- dplyr::filter(summary_companies, .data$sector == "Steel")
-# shipping <- dplyr::filter(summary_companies, .data$sector == "Shipping")
-# cement <- dplyr::filter(summary_companies, .data$sector == "Cement")
-
-
-# # Write the datasets to an Excel file
-# openxlsx::write.xlsx(list(
-#   `All data`= summary_companies,
-#   `Power NonRenewable` = power_nonrenewable,
-#   `Power Renewable` = power_renewable,
-#   Coal = coal,
-#   `Oil And Gas` = oil_and_gas,
-#   Steel = steel,
-#   Shipping = shipping,
-#   Cement = cement
-# ), file = "workspace/coverage_companies.xlsx")
-
-# ==================================================
-# OVERALL STATS
-# ==================================================
-
-
-n_unique_companies  <-  company_activities %>% 
-  filter(activity_unit %in% c("t coal", "t cement",  "t steel","MW", "tkm", "pkm","# vehicles", "GJ"), 
-    year==selected_year, 
-    .data$ald_location %in% use_countries_vector) %>%
-  distinct(company_id) %>% count() %>% rename(`Number of Unique Companies`=`n`)
-
-
-total_ghg <- 259326110 #325705280
-total_emissions <- summary_companies %>% 
-  group_by(sector) %>% 
-  summarise(`Total Emissions` = sum(`Emissions (tCO2/tCO2e)`)) %>% 
-  mutate(
-    `Total GHG Malaysia` = total_ghg,
-    `Share of GHG` = `Total Emissions`/`Total GHG Malaysia`)
-
-
-# Write the datasets to an Excel file
-openxlsx::write.xlsx(list(
-  `Emissions Coverage`= summary_companies,
-  `Summary Emissions`= total_emissions,
-  `Summary Companies` = n_unique_companies
-), file = "workspace/coverage_companies.xlsx")
+# 3. Case: Filter only on company selected (ignore country filter)
+create_excel_for_filters(
+  companies_filter = use_companies,
+  countries_filter = NULL,
+  file_name = "workspace/coverage_companies_company_only.xlsx",
+  selected_year=selected_year,
+  total_ghg=total_ghg
+)
